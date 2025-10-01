@@ -55,7 +55,6 @@
             min-height: 100vh;
         }
 
-        /* Header with Blur */
         .header {
             background: var(--card-bg);
             padding: 20px 24px 24px;
@@ -97,7 +96,6 @@
             font-weight: 500;
         }
 
-        /* Floating Action Button */
         .fab {
             position: fixed;
             bottom: calc(80px + env(safe-area-inset-bottom));
@@ -113,7 +111,7 @@
             align-items: center;
             justify-content: center;
             z-index: 999;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s;
         }
 
         .fab:active {
@@ -126,7 +124,6 @@
             stroke: white;
         }
 
-        /* Stats Grid - Modern Cards */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -144,22 +141,6 @@
             border: 1px solid var(--border);
             position: relative;
             overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .stat-card:hover::before {
-            opacity: 1;
         }
 
         .stat-card .label {
@@ -182,14 +163,12 @@
         .stat-card.income .value { color: var(--success); }
         .stat-card.expense .value { color: var(--danger); }
 
-        /* Container */
         .container {
             padding: 0 24px 24px;
             max-width: 500px;
             margin: 0 auto;
         }
 
-        /* Section Headers */
         .section-header {
             display: flex;
             justify-content: space-between;
@@ -203,7 +182,6 @@
             letter-spacing: -0.5px;
         }
 
-        /* Modern Payment Cards - Ultra Compact */
         .payment-list {
             display: flex;
             flex-direction: column;
@@ -216,7 +194,7 @@
             padding: 14px;
             box-shadow: 0 1px 6px var(--shadow);
             border: 1px solid var(--border);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s;
             position: relative;
             overflow: hidden;
         }
@@ -251,9 +229,6 @@
         .payment-category {
             font-size: 12px;
             color: var(--text-secondary);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
             margin-top: 2px;
         }
 
@@ -293,7 +268,7 @@
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: transform 0.1s;
         }
 
         .btn:active {
@@ -341,7 +316,6 @@
             gap: 5px;
         }
 
-        /* Status Badges - Inline */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -370,7 +344,6 @@
             border: 1px solid rgba(52, 199, 89, 0.3);
         }
 
-        /* Bottom Navigation - Glassmorphism */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -455,7 +428,6 @@
             box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
         }
 
-        /* Modal - Full Screen Slide Up */
         .modal {
             display: none;
             position: fixed;
@@ -527,7 +499,6 @@
             transform: scale(0.9);
         }
 
-        /* Modern Form Styles */
         .form-group {
             margin-bottom: 24px;
         }
@@ -585,7 +556,6 @@
             transform: scale(0.98);
         }
 
-        /* File Upload - Modern */
         .file-upload-label {
             display: block;
             padding: 32px;
@@ -606,7 +576,6 @@
             display: none;
         }
 
-        /* Empty State */
         .empty-state {
             text-align: center;
             padding: 80px 20px;
@@ -631,7 +600,62 @@
             line-height: 1.5;
         }
 
-        /* Loading Overlay */
+        .view {
+            display: none !important;
+        }
+
+        .view.active {
+            display: block !important;
+            animation: fadeIn 0.3s;
+        }
+
+        .report-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .report-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 16px;
+        }
+
+        .report-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 20px;
+            padding-top: 20px;
+        }
+
+        .statement-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .statement-info .name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .statement-info .date {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
         .loading-overlay {
             display: none;
             position: fixed;
@@ -676,7 +700,6 @@
             font-size: 14px;
         }
 
-        /* Preview Section */
         .invoice-preview {
             display: none;
             margin-top: 16px;
@@ -737,69 +760,10 @@
             font-weight: 600;
             color: var(--primary);
         }
-
-        /* Views */
-        .view {
-            display: none !important;
-        }
-
-        .view.active {
-            display: block !important;
-            animation: fadeIn 0.3s;
-        }
-
-        /* Reports */
-        .report-card {
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 16px var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .report-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 16px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 16px;
-        }
-
-        .report-row:last-child {
-            border-bottom: none;
-            font-weight: 700;
-            font-size: 20px;
-            padding-top: 20px;
-        }
-
-        .statement-card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 12px var(--shadow);
-            border: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .statement-info .name {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .statement-info .date {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
     </style>
 </head>
 <body>
 
-    <!-- Dashboard View -->
     <div id="dashboardView" class="view active">
         <div class="header">
             <div class="header-content">
@@ -835,7 +799,6 @@
         </div>
     </div>
 
-    <!-- Pending View -->
     <div id="pendingView" class="view">
         <div class="header">
             <div class="header-content">
@@ -848,7 +811,6 @@
         </div>
     </div>
 
-    <!-- Approved View -->
     <div id="approvedView" class="view">
         <div class="header">
             <div class="header-content">
@@ -861,7 +823,6 @@
         </div>
     </div>
 
-    <!-- Sent View -->
     <div id="sentView" class="view">
         <div class="header">
             <div class="header-content">
@@ -874,7 +835,6 @@
         </div>
     </div>
 
-    <!-- Reports View -->
     <div id="reportsView" class="view">
         <div class="header">
             <div class="header-content">
@@ -896,7 +856,6 @@
         </div>
     </div>
 
-    <!-- Floating Action Button -->
     <button class="fab" onclick="window.showAddPayment()">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -904,7 +863,6 @@
         </svg>
     </button>
 
-    <!-- Add Payment Modal -->
     <div id="addPaymentModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -981,7 +939,46 @@
         </div>
     </div>
 
-    <!-- Bottom Navigation -->
+    <div id="uploadStatementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload Statement</h2>
+                <button class="close-btn" onclick="closeModal('uploadStatementModal')">×</button>
+            </div>
+            <div style="background: var(--card-bg-elevated); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 3px solid var(--primary);">
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 15px;">How Statements Work</div>
+                <div style="font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
+                    Bank statements are for reference only - they won't create duplicate entries. Use them to cross-check your manual entries and reconcile accounts.
+                </div>
+            </div>
+            <form onsubmit="uploadStatement(event)">
+                <div class="form-group">
+                    <label class="form-label">Month</label>
+                    <input type="month" class="form-input" id="statementMonth" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Statement Type</label>
+                    <select class="form-select" id="statementType" required>
+                        <option value="">Select type</option>
+                        <option value="bank">Bank Statement</option>
+                        <option value="cash">Cash Book</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Statement File</label>
+                    <label class="file-upload-label" style="margin-top: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 16px;">Choose File</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);" id="statementFileName">PDF, Excel, or CSV</div>
+                        <input type="file" id="statementFile" accept=".pdf,.xlsx,.xls,.csv" required>
+                    </label>
+                </div>
+                <button type="submit" class="btn-submit">Upload Statement</button>
+            </form>
+        </div>
+    </div>
+
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchView('dashboard')">
             <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1025,49 +1022,6 @@
         </div>
     </div>
 
-    <!-- Upload Statement Modal -->
-    <div id="uploadStatementModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Upload Statement</h2>
-                <button class="close-btn" onclick="closeModal('uploadStatementModal')">×</button>
-            </div>
-            <div style="background: var(--card-bg-elevated); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 3px solid var(--primary);">
-                <div style="font-weight: 600; margin-bottom: 8px; font-size: 15px;">💡 How Statements Work</div>
-                <div style="font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
-                    Bank statements are for <strong>reference only</strong> - they won't create duplicate entries. Use them to:
-                    <br>• Cross-check your manual entries
-                    <br>• Reconcile accounts at month end
-                    <br>• Keep records for auditing
-                </div>
-            </div>
-            <form onsubmit="uploadStatement(event)">
-                <div class="form-group">
-                    <label class="form-label">Month</label>
-                    <input type="month" class="form-input" id="statementMonth" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Statement Type</label>
-                    <select class="form-select" id="statementType" required>
-                        <option value="">Select type</option>
-                        <option value="bank">Bank Statement</option>
-                        <option value="cash">Cash Book</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Statement File</label>
-                    <label class="file-upload-label" style="margin-top: 8px;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
-                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 16px;">Choose File</div>
-                        <div style="font-size: 14px; color: var(--text-secondary);" id="statementFileName">PDF, Excel, or CSV</div>
-                        <input type="file" id="statementFile" accept=".pdf,.xlsx,.xls,.csv" required>
-                    </label>
-                </div>
-                <button type="submit" class="btn-submit">Upload Statement</button>
-            </form>
-        </div>
-    </div>
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
         <div class="loading-text">Scanning Invoice...</div>
@@ -1075,7 +1029,8 @@
     </div>
 
     <script>
-        // Local Storage (No Firebase needed for testing)
+        console.log('DUL Accounts App Starting...');
+        
         window.payments = JSON.parse(localStorage.getItem('dulPayments')) || [];
         window.statements = JSON.parse(localStorage.getItem('dulStatements')) || [];
 
@@ -1084,11 +1039,11 @@
             localStorage.setItem('dulStatements', JSON.stringify(window.statements));
         }
 
-        // Define functions BEFORE they're used
         window.showAddPayment = function() {
             const modal = document.getElementById('addPaymentModal');
             if (modal) {
                 modal.classList.add('active');
+                setTimeout(setupFileInputs, 100);
             }
         };
 
@@ -1103,7 +1058,6 @@
             }
         };
 
-        // Close modal when clicking outside
         window.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal')) {
                 e.target.classList.remove('active');
@@ -1126,7 +1080,6 @@
         window.addPayment = function(event) {
             event.preventDefault();
             
-            // Get file from either camera or upload input
             const cameraFile = document.getElementById('invoiceFileCamera').files[0];
             const uploadFile = document.getElementById('invoiceFileUpload').files[0];
             const invoiceFile = cameraFile || uploadFile;
@@ -1198,6 +1151,27 @@
             window.payments = window.payments.filter(p => p.id !== id);
             saveData();
             loadPayments();
+        };
+
+        window.viewInvoice = function(id) {
+            const payment = window.payments.find(p => p.id === id);
+            if (!payment || !payment.invoice) return;
+            
+            const win = window.open('', '_blank');
+            if (payment.invoice.type.includes('pdf')) {
+                win.document.write(`
+                    <iframe src="${payment.invoice.data}" 
+                            style="width:100%; height:100vh; border:none;" 
+                            title="${payment.invoice.name}">
+                    </iframe>
+                `);
+            } else {
+                win.document.write(`
+                    <img src="${payment.invoice.data}" 
+                         style="max-width:100%; height:auto;" 
+                         alt="${payment.invoice.name}">
+                `);
+            }
         };
 
         window.uploadStatement = function(event) {
@@ -1497,99 +1471,20 @@
             }
         }
 
-        // File input handlers
-        document.addEventListener('DOMContentLoaded', function() {
-            // Invoice file input
-            const invoiceFileInput = document.getElementById('invoiceFile');
-            if (fileInput) {
-                fileInput.addEventListener('change', async function(e) {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    
-                    const fileName = file.name;
-                    document.getElementById('invoiceFileName').textContent = fileName;
-                    
-                    // Only process images for OCR (not PDFs)
-                    if (file.type.startsWith('image/')) {
-                        await processInvoice(file);
-                    } else if (file.type === 'application/pdf') {
-                        // For PDFs, try to extract filename info
-                        const preview = document.getElementById('invoicePreview');
-                        const previewImage = document.getElementById('previewImage');
-                        previewImage.style.display = 'none';
-                        preview.classList.add('active');
-                        
-                        // Extract data from filename if possible
-                        const filenameData = extractFromFilename(fileName);
-                        displayExtractedData(filenameData);
-                        autoFillForm(filenameData);
-                        
-                        document.getElementById('extractedData').innerHTML = `
-                            <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                                <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
-                                <div style="font-weight: 600; margin-bottom: 8px;">PDF uploaded</div>
-                                <div style="font-size: 14px;">OCR only works with images. Please take a photo of the PDF or fill in manually.</div>
-                            </div>
-                        `;
-                    }
-                });
-            }
-            
-            // Statement file input
-            const statementFileInput = document.getElementById('statementFile');
-            if (statementFileInput) {
-                statementFileInput.addEventListener('change', function(e) {
-                    const fileName = e.target.files[0]?.name || 'PDF, Excel, or CSV';
-                    document.getElementById('statementFileName').textContent = fileName;
-                });
-            }
-        });
-
-        function extractFromFilename(filename) {
-            const data = {
-                amount: null,
-                description: null,
-                supplier: null,
-                date: null,
-                invoiceNumber: null
-            };
-            
-            // Try to extract invoice number from filename
-            const invoiceMatch = filename.match(/(?:invoice|inv|bill|INV|T0)[\s_-]*(\d+)/i);
-            if (invoiceMatch) {
-                data.invoiceNumber = invoiceMatch[1];
-                data.description = `Invoice #${data.invoiceNumber}`;
-            } else {
-                // Use filename without extension as description
-                data.description = filename.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
-            }
-            
-            // Try to extract date from filename (YYYY-MM-DD or similar)
-            const dateMatch = filename.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
-            if (dateMatch) {
-                data.date = dateMatch[1].replace(/_/g, '-');
-            }
-            
-            return data;
-        }
-
         async function processInvoice(file) {
             const loadingOverlay = document.getElementById('loadingOverlay');
             const preview = document.getElementById('invoicePreview');
             const previewImage = document.getElementById('previewImage');
             
             try {
-                // Show loading
                 loadingOverlay.classList.add('active');
                 
-                // Create image URL for preview
                 const imageUrl = URL.createObjectURL(file);
                 previewImage.src = imageUrl;
                 previewImage.style.display = 'block';
                 
                 console.log('Starting OCR processing...');
                 
-                // Run OCR
                 const result = await Tesseract.recognize(
                     file,
                     'eng',
@@ -1606,23 +1501,17 @@
                     }
                 );
                 
-                // Extract data from OCR text
                 const text = result.data.text;
                 console.log('Extracted text:', text);
                 
                 const extractedData = extractInvoiceData(text);
                 console.log('Parsed data:', extractedData);
                 
-                // Hide loading
                 loadingOverlay.classList.remove('active');
-                
-                // Show preview
                 preview.classList.add('active');
                 
-                // Display extracted data
                 displayExtractedData(extractedData);
                 
-                // Auto-fill form - THIS IS THE KEY PART
                 setTimeout(() => {
                     autoFillForm(extractedData);
                 }, 100);
@@ -1643,7 +1532,6 @@
                 invoiceNumber: null
             };
             
-            // Extract amount - look for £ or patterns like 100.00, £100.00, Total: 100.00
             const amountPatterns = [
                 /(?:total|amount|balance|due|pay)[\s:£]*(\d+\.?\d{0,2})/gi,
                 /£\s*(\d+\.?\d{0,2})/g,
@@ -1657,29 +1545,50 @@
                         const num = m.match(/\d+\.?\d{0,2}/);
                         return num ? parseFloat(num[0]) : 0;
                     });
-                    // Get the largest number (likely the total)
                     data.amount = Math.max(...nums);
                     if (data.amount > 0) break;
                 }
             }
             
-            // Extract supplier/company name (usually at top)
             const lines = text.split('\n').filter(line => line.trim().length > 0);
             if (lines.length > 0) {
                 data.supplier = lines[0].trim();
                 data.description = `Invoice from ${data.supplier}`;
             }
             
-            // Extract invoice number
             const invoiceMatch = text.match(/(?:invoice|inv|bill)[\s#:]*(\w+\d+)/gi);
             if (invoiceMatch) {
                 data.invoiceNumber = invoiceMatch[0].replace(/(?:invoice|inv|bill)[\s#:]*/gi, '');
             }
             
-            // Extract date
             const dateMatch = text.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/);
             if (dateMatch) {
                 data.date = dateMatch[0];
+            }
+            
+            return data;
+        }
+
+        function extractFromFilename(filename) {
+            const data = {
+                amount: null,
+                description: null,
+                supplier: null,
+                date: null,
+                invoiceNumber: null
+            };
+            
+            const invoiceMatch = filename.match(/(?:invoice|inv|bill|INV|T0)[\s_-]*(\d+)/i);
+            if (invoiceMatch) {
+                data.invoiceNumber = invoiceMatch[1];
+                data.description = `Invoice #${data.invoiceNumber}`;
+            } else {
+                data.description = filename.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
+            }
+            
+            const dateMatch = filename.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
+            if (dateMatch) {
+                data.date = dateMatch[1].replace(/_/g, '-');
             }
             
             return data;
@@ -1712,7 +1621,6 @@
                     <div class="extracted-item">
                         <div class="extracted-label">Invoice #</div>
                         <div class="extracted-value">${data.invoiceNumber}</div>
-                    </div>
                 `;
             }
             
@@ -1735,7 +1643,6 @@
         function autoFillForm(data) {
             console.log('Auto-filling form with:', data);
             
-            // Fill amount
             if (data.amount && data.amount > 0) {
                 const amountField = document.getElementById('paymentAmount');
                 if (amountField) {
@@ -1745,7 +1652,6 @@
                 }
             }
             
-            // Fill description
             if (data.description) {
                 const descField = document.getElementById('paymentDesc');
                 if (descField) {
@@ -1755,7 +1661,6 @@
                 }
             }
             
-            // Fill notes
             if (data.invoiceNumber || data.date) {
                 const notes = document.getElementById('paymentNotes');
                 if (notes) {
@@ -1771,7 +1676,6 @@
                 }
             }
             
-            // Scroll to description field
             setTimeout(() => {
                 const descField = document.getElementById('paymentDesc');
                 if (descField) {
@@ -1781,8 +1685,85 @@
             }, 500);
         }
 
-        // Initialize
+        function setupFileInputs() {
+            console.log('Setting up file inputs...');
+            
+            const cameraInput = document.getElementById('invoiceFileCamera');
+            if (cameraInput) {
+                cameraInput.addEventListener('change', async function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    console.log('Camera file selected:', file.name);
+                    document.getElementById('invoiceFileName').textContent = '📸 ' + file.name;
+                    
+                    if (file.type.startsWith('image/')) {
+                        await processInvoice(file);
+                    }
+                });
+                console.log('Camera input handler attached');
+            }
+            
+            const uploadInput = document.getElementById('invoiceFileUpload');
+            if (uploadInput) {
+                uploadInput.addEventListener('change', async function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const fileName = file.name;
+                    console.log('Upload file selected:', fileName, 'Type:', file.type);
+                    document.getElementById('invoiceFileName').textContent = '📁 ' + fileName;
+                    
+                    if (file.type.startsWith('image/')) {
+                        console.log('Processing uploaded image with OCR...');
+                        await processInvoice(file);
+                    } else if (file.type === 'application/pdf') {
+                        console.log('PDF uploaded - no OCR available');
+                        const preview = document.getElementById('invoicePreview');
+                        const previewImage = document.getElementById('previewImage');
+                        if (preview && previewImage) {
+                            previewImage.style.display = 'none';
+                            preview.classList.add('active');
+                            
+                            const filenameData = extractFromFilename(fileName);
+                            
+                            document.getElementById('extractedData').innerHTML = `
+                                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                                    <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+                                    <div style="font-weight: 600; margin-bottom: 8px;">PDF Uploaded</div>
+                                    <div style="font-size: 14px;">OCR only works with images. Fill in details manually or take a photo.</div>
+                                </div>
+                            `;
+                            
+                            if (filenameData.description || filenameData.invoiceNumber) {
+                                autoFillForm(filenameData);
+                            }
+                        }
+                    }
+                });
+                console.log('Upload input handler attached');
+            }
+            
+            const statementFileInput = document.getElementById('statementFile');
+            if (statementFileInput) {
+                statementFileInput.addEventListener('change', function(e) {
+                    const fileName = e.target.files[0]?.name || 'PDF, Excel, or CSV';
+                    document.getElementById('statementFileName').textContent = fileName;
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded - setting up file inputs');
+            setupFileInputs();
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
         loadPayments();
+        console.log('App initialized successfully');
     </script>
 </body>
 </html>
