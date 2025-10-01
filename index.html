@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#10A37F">
+    <title>DUL Accounts</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #10A37F;
+            --primary-dark: #0D7A5F;
+            --primary-light: #D1FAE5;
+            --success: #34C759;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --background: #000000;
+            --card-bg: #1C1C1E;
+            --card-bg-elevated: #2C2C2E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989D;
+            --border: #38383A;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --background: #F2F2F7;
+                --card-bg: #FFFFFF;
+                --card-bg-elevated: #FFFFFF;
+                --text-primary: #000000;
+                --text-secondary: #8E8E93;
+                --border: #E5E5EA;
+                --shadow: rgba(0, 0, 0, 0.08);
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            padding-bottom: 100px;
+            padding-top: env(safe-area-inset-top);
+            min-height: 100vh;
+        }
+
+        /* Header with Blur */
+        .header {
+            background: var(--card-bg);
+            padding: 20px 24px 24px;
+            padding-top: calc(env(safe-area-inset-top) + 20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            background: rgba(28, 28, 30, 0.72);
+            border-bottom: 0.5px solid var(--border);
+        }
+
+        @media (prefers-color-scheme: light) {
+            .header {
+                background: rgba(242, 242, 247, 0.8);
+            }
+        }
+
+        .header-content {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 38px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 17px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: calc(80px + env(safe-area-inset-bottom));
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            box-shadow: 0 8px 24px rgba(16, 163, 127, 0.4);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .fab:active {
+            transform: scale(0.92);
+        }
+
+        .fab svg {
+            width: 28px;
+            height: 28px;
+            stroke: white;
+        }
+
+        /* Stats Grid - Modern Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            padding: 20px 24px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-bg-elevated) 100%);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 16px var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .stat-card.pending .value { color: var(--warning); }
+        .stat-card.approved .value { color: var(--primary); }
+        .stat-card.income .value { color: var(--success); }
+        .stat-card.expense .value { color: var(--danger); }
+
+        /* Container */
+        .container {
+            padding: 0 24px 24px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 0 16px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Modern Payment Cards - Ultra Compact */
+        .payment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .payment-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 14px;
+            box-shadow: 0 1px 6px var(--shadow);
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .payment-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        .payment-card:active {
+            transform: scale(0.98);
+        }
+
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .payment-title {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+        }
+
+        .payment-category {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 2px;
+        }
+
+        .payment-amount {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .payment-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .payment-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .payment-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 9px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, var(--success) 0%, #28A745 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, var(--danger) 0%, #DC3545 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-view {
+            width: 100%;
+            padding: 8px;
+            background: var(--card-bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--primary);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        /* Status Badges - Inline */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            gap: 4px;
+        }
+
+        .status-pending {
+            background: rgba(255, 149, 0, 0.2);
+            color: var(--warning);
+            border: 1px solid rgba(255, 149, 0, 0.3);
+        }
+
+        .status-approved {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border: 1px solid rgba(16, 163, 127, 0.3);
+        }
+
+        .status-sent {
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(52, 199, 89, 0.3);
+        }
+
+        /* Bottom Navigation - Glassmorphism */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(28, 28, 30, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-top: 0.5px solid var(--border);
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex;
+            justify-content: space-around;
+            padding-top: 12px;
+            z-index: 1000;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: light) {
+            .bottom-nav {
+                background: rgba(242, 242, 247, 0.8);
+            }
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+            flex: 1;
+            max-width: 100px;
+            position: relative;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 0 0 3px 3px;
+        }
+
+        .nav-item .icon {
+            width: 26px;
+            height: 26px;
+            margin-bottom: 4px;
+            transition: transform 0.2s;
+        }
+
+        .nav-item.active .icon {
+            transform: scale(1.1);
+        }
+
+        .nav-item .label {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .nav-item .badge {
+            position: absolute;
+            top: 4px;
+            right: 50%;
+            margin-right: -20px;
+            background: linear-gradient(135deg, var(--danger) 0%, #DC3545 100%);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 7px;
+            border-radius: 12px;
+            min-width: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
+        }
+
+        /* Modal - Full Screen Slide Up */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: fadeIn 0.3s;
+            align-items: flex-end;
+        }
+
+        .modal.active {
+            display: flex !important;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 24px 24px 0 0;
+            padding: 32px 24px;
+            padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .modal-header h2 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+        }
+
+        .close-btn {
+            background: var(--card-bg-elevated);
+            border: 1px solid var(--border);
+            width: 36px;
+            height: 36px;
+            border-radius: 18px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .close-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Modern Form Styles */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 16px 18px;
+            background: var(--card-bg-elevated);
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            font-size: 17px;
+            font-family: inherit;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--card-bg);
+            box-shadow: 0 0 0 4px rgba(16, 163, 127, 0.1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            box-shadow: 0 4px 16px rgba(16, 163, 127, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn-submit:active {
+            transform: scale(0.98);
+        }
+
+        /* File Upload - Modern */
+        .file-upload-label {
+            display: block;
+            padding: 32px;
+            background: var(--card-bg-elevated);
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--primary);
+            background: rgba(16, 163, 127, 0.05);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .empty-state .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.4;
+        }
+
+        .empty-state .title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .empty-state .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .loading-subtext {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Preview Section */
+        .invoice-preview {
+            display: none;
+            margin-top: 16px;
+            padding: 20px;
+            background: var(--card-bg-elevated);
+            border-radius: 16px;
+            border: 2px solid var(--primary);
+        }
+
+        .invoice-preview.active {
+            display: block;
+        }
+
+        .preview-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            background: var(--background);
+        }
+
+        .extracted-data {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .extracted-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--card-bg);
+            border-radius: 10px;
+        }
+
+        .extracted-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .extracted-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Views */
+        .view {
+            display: none !important;
+        }
+
+        .view.active {
+            display: block !important;
+            animation: fadeIn 0.3s;
+        }
+
+        /* Reports */
+        .report-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .report-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 16px;
+        }
+
+        .report-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 20px;
+            padding-top: 20px;
+        }
+
+        .statement-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .statement-info .name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .statement-info .date {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Dashboard View -->
+    <div id="dashboardView" class="view active">
+        <div class="header">
+            <div class="header-content">
+                <h1>DUL Accounts</h1>
+                <div class="subtitle">Group Management</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card pending">
+                <div class="label">Pending</div>
+                <div class="value" id="pendingCount">0</div>
+            </div>
+            <div class="stat-card approved">
+                <div class="label">Approved</div>
+                <div class="value" id="approvedCount">0</div>
+            </div>
+            <div class="stat-card income">
+                <div class="label">Month In</div>
+                <div class="value" id="monthIncome">£0</div>
+            </div>
+            <div class="stat-card expense">
+                <div class="label">Month Out</div>
+                <div class="value" id="monthExpense">£0</div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="section-header">
+                <h2>Recent Activity</h2>
+            </div>
+            <div id="recentPayments" class="payment-list"></div>
+        </div>
+    </div>
+
+    <!-- Pending View -->
+    <div id="pendingView" class="view">
+        <div class="header">
+            <div class="header-content">
+                <h1>Pending</h1>
+                <div class="subtitle">Awaiting approval</div>
+            </div>
+        </div>
+        <div class="container" id="pendingContainer">
+            <div id="pendingPayments" class="payment-list"></div>
+        </div>
+    </div>
+
+    <!-- Approved View -->
+    <div id="approvedView" class="view">
+        <div class="header">
+            <div class="header-content">
+                <h1>Approved</h1>
+                <div class="subtitle">Ready to send</div>
+            </div>
+        </div>
+        <div class="container" id="approvedContainer">
+            <div id="approvedPayments" class="payment-list"></div>
+        </div>
+    </div>
+
+    <!-- Sent View -->
+    <div id="sentView" class="view">
+        <div class="header">
+            <div class="header-content">
+                <h1>Sent</h1>
+                <div class="subtitle">Completed payments</div>
+            </div>
+        </div>
+        <div class="container" id="sentContainer">
+            <div id="sentPayments" class="payment-list"></div>
+        </div>
+    </div>
+
+    <!-- Reports View -->
+    <div id="reportsView" class="view">
+        <div class="header">
+            <div class="header-content">
+                <h1>Reports</h1>
+                <div class="subtitle">Monthly overview</div>
+            </div>
+        </div>
+        <div class="container" id="reportsContainer">
+            <div class="section-header">
+                <h2>Current Month</h2>
+            </div>
+            <div class="report-card" id="monthlyReport"></div>
+
+            <div class="section-header">
+                <h2>Statements</h2>
+                <button class="action-btn" onclick="showUploadStatement()" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);">+ Upload</button>
+            </div>
+            <div id="statementsList"></div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="window.showAddPayment()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
+
+    <!-- Add Payment Modal -->
+    <div id="addPaymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Payment</h2>
+                <button class="close-btn" onclick="closeModal('addPaymentModal')">×</button>
+            </div>
+            <form onsubmit="addPayment(event)">
+                <div class="form-group">
+                    <label class="form-label">Invoice / Receipt</label>
+                    <label class="file-upload-label" style="margin-top: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📸</div>
+                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 16px;">Take Photo for Auto-Extract</div>
+                        <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;" id="invoiceFileName">Image files auto-extract • PDFs for storage only</div>
+                        <div style="font-size: 12px; color: var(--primary); font-weight: 600;">✨ Take photo of invoice/receipt for AI scanning</div>
+                        <input type="file" id="invoiceFile" accept="image/*,.pdf" capture="environment">
+                    </label>
+                    <div class="invoice-preview" id="invoicePreview">
+                        <div class="preview-title">
+                            <span>🔍</span> Extracted Data
+                        </div>
+                        <img id="previewImage" class="preview-image" alt="Invoice preview">
+                        <div class="extracted-data" id="extractedData"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" id="paymentDesc" placeholder="Enter description or upload invoice" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount (£)</label>
+                    <input type="number" step="0.01" class="form-input" id="paymentAmount" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="paymentCategory" required>
+                        <option value="">Select category</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Supplies">Supplies</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Services">Services</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" id="paymentType" required>
+                        <option value="expense">Expense (Out)</option>
+                        <option value="income">Income (In)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select class="form-select" id="paymentMethod" required>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="cheque">Cheque</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea class="form-textarea" id="paymentNotes" placeholder="Add any additional notes..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Add Payment</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchView('dashboard')">
+            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            </svg>
+            <div class="label">Home</div>
+        </div>
+        <div class="nav-item" onclick="switchView('pending')">
+            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <div class="label">Pending</div>
+            <span class="badge" id="pendingBadge" style="display: none;">0</span>
+        </div>
+        <div class="nav-item" onclick="switchView('approved')">
+            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <div class="label">Approved</div>
+            <span class="badge" id="approvedBadge" style="display: none;">0</span>
+        </div>
+        <div class="nav-item" onclick="switchView('sent')">
+            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 2 11 13"></polyline>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            <div class="label">Sent</div>
+        </div>
+        <div class="nav-item" onclick="switchView('reports')">
+            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="20" x2="12" y2="10"></line>
+                <line x1="18" y1="20" x2="18" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="16"></line>
+            </svg>
+            <div class="label">Reports</div>
+        </div>
+    </div>
+
+    <!-- Upload Statement Modal -->
+    <div id="uploadStatementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload Statement</h2>
+                <button class="close-btn" onclick="closeModal('uploadStatementModal')">×</button>
+            </div>
+            <div style="background: var(--card-bg-elevated); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 3px solid var(--primary);">
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 15px;">💡 How Statements Work</div>
+                <div style="font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
+                    Bank statements are for <strong>reference only</strong> - they won't create duplicate entries. Use them to:
+                    <br>• Cross-check your manual entries
+                    <br>• Reconcile accounts at month end
+                    <br>• Keep records for auditing
+                </div>
+            </div>
+            <form onsubmit="uploadStatement(event)">
+                <div class="form-group">
+                    <label class="form-label">Month</label>
+                    <input type="month" class="form-input" id="statementMonth" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Statement Type</label>
+                    <select class="form-select" id="statementType" required>
+                        <option value="">Select type</option>
+                        <option value="bank">Bank Statement</option>
+                        <option value="cash">Cash Book</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Statement File</label>
+                    <label class="file-upload-label" style="margin-top: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 16px;">Choose File</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);" id="statementFileName">PDF, Excel, or CSV</div>
+                        <input type="file" id="statementFile" accept=".pdf,.xlsx,.xls,.csv" required>
+                    </label>
+                </div>
+                <button type="submit" class="btn-submit">Upload Statement</button>
+            </form>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Scanning Invoice...</div>
+        <div class="loading-subtext">Extracting data from image</div>
+    </div>
+
+    <script>
+        // Local Storage (No Firebase needed for testing)
+        window.payments = JSON.parse(localStorage.getItem('dulPayments')) || [];
+        window.statements = JSON.parse(localStorage.getItem('dulStatements')) || [];
+
+        function saveData() {
+            localStorage.setItem('dulPayments', JSON.stringify(window.payments));
+            localStorage.setItem('dulStatements', JSON.stringify(window.statements));
+        }
+
+        // Define functions BEFORE they're used
+        window.showAddPayment = function() {
+            const modal = document.getElementById('addPaymentModal');
+            if (modal) {
+                modal.classList.add('active');
+            }
+        };
+
+        window.showUploadStatement = function() {
+            document.getElementById('uploadStatementModal').classList.add('active');
+        };
+
+        window.closeModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        };
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+
+        window.switchView = function(view) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(view + 'View').classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            if (view === 'pending') renderPendingPayments();
+            if (view === 'approved') renderApprovedPayments();
+            if (view === 'sent') renderSentPayments();
+            if (view === 'reports') renderReports();
+        };
+
+        window.addPayment = function(event) {
+            event.preventDefault();
+            
+            const invoiceFile = document.getElementById('invoiceFile').files[0];
+            let invoiceData = null;
+            
+            if (invoiceFile) {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    invoiceData = {
+                        name: invoiceFile.name,
+                        type: invoiceFile.type,
+                        data: reader.result
+                    };
+                    savePayment(invoiceData);
+                };
+                reader.readAsDataURL(invoiceFile);
+            } else {
+                savePayment(null);
+            }
+        };
+
+        function savePayment(invoiceData) {
+            const payment = {
+                id: Date.now().toString(),
+                description: document.getElementById('paymentDesc').value,
+                amount: parseFloat(document.getElementById('paymentAmount').value),
+                category: document.getElementById('paymentCategory').value,
+                type: document.getElementById('paymentType').value,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                notes: document.getElementById('paymentNotes').value,
+                invoice: invoiceData,
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            window.payments.unshift(payment);
+            saveData();
+            closeModal('addPaymentModal');
+            document.querySelector('#addPaymentModal form').reset();
+            document.getElementById('invoiceFileName').textContent = 'PDF, Image, or take a photo';
+            loadPayments();
+        }
+
+        window.approvePayment = function(id) {
+            const payment = window.payments.find(p => p.id === id);
+            if (payment) {
+                payment.status = 'approved';
+                saveData();
+                loadPayments();
+            }
+        };
+
+        window.markAsSent = function(id) {
+            const payment = window.payments.find(p => p.id === id);
+            if (payment) {
+                payment.status = 'sent';
+                payment.sentAt = new Date().toISOString();
+                saveData();
+                loadPayments();
+            }
+        };
+
+        window.deletePayment = function(id) {
+            if (!confirm('Delete this payment?')) return;
+            
+            window.payments = window.payments.filter(p => p.id !== id);
+            saveData();
+            loadPayments();
+        };
+
+        window.uploadStatement = function(event) {
+            event.preventDefault();
+            
+            const month = document.getElementById('statementMonth').value;
+            const type = document.getElementById('statementType').value;
+            const file = document.getElementById('statementFile').files[0];
+            
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                const statement = {
+                    id: Date.now().toString(),
+                    month: month,
+                    type: type,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileData: reader.result,
+                    uploadedAt: new Date().toISOString()
+                };
+                
+                window.statements.push(statement);
+                saveData();
+                closeModal('uploadStatementModal');
+                document.querySelector('#uploadStatementModal form').reset();
+                document.getElementById('statementFileName').textContent = 'PDF, Excel, or CSV';
+                renderReports();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.viewStatement = function(id) {
+            const statement = window.statements.find(s => s.id === id);
+            if (!statement) return;
+            
+            const win = window.open('', '_blank');
+            if (statement.fileName.toLowerCase().endsWith('.pdf')) {
+                win.document.write(`
+                    <iframe src="${statement.fileData}" 
+                            style="width:100%; height:100vh; border:none;" 
+                            title="${statement.fileName}">
+                    </iframe>
+                `);
+            } else {
+                win.document.write(`
+                    <div style="padding: 20px; font-family: system-ui;">
+                        <h2>${statement.fileName}</h2>
+                        <p>Download the file to view Excel/CSV statements</p>
+                        <a href="${statement.fileData}" download="${statement.fileName}" 
+                           style="background: #10A37F; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 20px;">
+                            Download File
+                        </a>
+                    </div>
+                `);
+            }
+        };
+
+        window.deleteStatement = function(id) {
+            if (!confirm('Delete this statement?')) return;
+            
+            window.statements = window.statements.filter(s => s.id !== id);
+            saveData();
+            renderReports();
+        };
+
+        function loadPayments() {
+            updateStats();
+            renderRecentPayments();
+        }
+
+        function updateStats() {
+            const pending = window.payments.filter(p => p.status === 'pending').length;
+            const approved = window.payments.filter(p => p.status === 'approved').length;
+            
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const monthPayments = window.payments.filter(p => p.date?.startsWith(currentMonth));
+            
+            const income = monthPayments
+                .filter(p => p.type === 'income' && p.status === 'sent')
+                .reduce((sum, p) => sum + p.amount, 0);
+            
+            const expense = monthPayments
+                .filter(p => p.type === 'expense' && p.status === 'sent')
+                .reduce((sum, p) => sum + p.amount, 0);
+            
+            document.getElementById('pendingCount').textContent = pending;
+            document.getElementById('approvedCount').textContent = approved;
+            document.getElementById('monthIncome').textContent = '£' + income.toFixed(2);
+            document.getElementById('monthExpense').textContent = '£' + expense.toFixed(2);
+            
+            const pendingBadge = document.getElementById('pendingBadge');
+            const approvedBadge = document.getElementById('approvedBadge');
+            
+            if (pending > 0) {
+                pendingBadge.textContent = pending;
+                pendingBadge.style.display = 'block';
+            } else {
+                pendingBadge.style.display = 'none';
+            }
+            
+            if (approved > 0) {
+                approvedBadge.textContent = approved;
+                approvedBadge.style.display = 'block';
+            } else {
+                approvedBadge.style.display = 'none';
+            }
+        }
+
+        function renderPaymentCard(payment) {
+            const statusClass = `status-${payment.status}`;
+            const statusText = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
+            
+            const methodIcon = payment.paymentMethod === 'cash' ? '💵' : 
+                              payment.paymentMethod === 'cheque' ? '📝' : '🏦';
+            
+            let actions = '';
+            if (payment.status === 'pending') {
+                actions = `
+                    <div class="payment-actions">
+                        <button class="btn btn-approve" onclick="approvePayment('${payment.id}')">Approve</button>
+                        <button class="btn btn-delete" onclick="deletePayment('${payment.id}')">Delete</button>
+                    </div>
+                `;
+            } else if (payment.status === 'approved') {
+                actions = `
+                    <div class="payment-actions">
+                        <button class="btn btn-send" onclick="markAsSent('${payment.id}')">Mark Sent</button>
+                        <button class="btn btn-secondary" onclick="deletePayment('${payment.id}')">Delete</button>
+                    </div>
+                `;
+            }
+            
+            const invoiceButton = payment.invoice ? 
+                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📎 Invoice</button>` : '';
+            
+            return `
+                <div class="payment-card">
+                    <div class="payment-header">
+                        <div style="flex: 1;">
+                            <div class="payment-title">${payment.description}</div>
+                            <div class="payment-category">${payment.category}</div>
+                        </div>
+                        <div class="payment-amount">£${payment.amount.toFixed(2)}</div>
+                    </div>
+                    <div class="payment-meta">
+                        <div class="payment-meta-item">
+                            ${payment.type === 'income' ? '↑' : '↓'} ${payment.type === 'income' ? 'In' : 'Out'}
+                        </div>
+                        <div class="payment-meta-item">
+                            ${methodIcon} ${payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
+                        </div>
+                        <div class="payment-meta-item">
+                            📅 ${new Date(payment.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </div>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    ${payment.notes ? `<div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4;">${payment.notes}</div>` : ''}
+                    ${invoiceButton}
+                    ${actions}
+                </div>
+            `;
+        }
+
+        function renderRecentPayments() {
+            const container = document.getElementById('recentPayments');
+            const recent = window.payments.slice(0, 10);
+            
+            if (recent.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">💰</div>
+                        <div class="title">No payments yet</div>
+                        <div class="subtitle">Tap the + button to create your first payment</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = recent.map(renderPaymentCard).join('');
+        }
+
+        function renderPendingPayments() {
+            const container = document.getElementById('pendingPayments');
+            const pending = window.payments.filter(p => p.status === 'pending');
+            
+            if (pending.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">✓</div>
+                        <div class="title">All caught up!</div>
+                        <div class="subtitle">No payments pending approval</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = pending.map(renderPaymentCard).join('');
+        }
+
+        function renderApprovedPayments() {
+            const container = document.getElementById('approvedPayments');
+            const approved = window.payments.filter(p => p.status === 'approved');
+            
+            if (approved.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <div class="title">Nothing to send</div>
+                        <div class="subtitle">No approved payments waiting</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = approved.map(renderPaymentCard).join('');
+        }
+
+        function renderSentPayments() {
+            const container = document.getElementById('sentPayments');
+            const sent = window.payments.filter(p => p.status === 'sent');
+            
+            if (sent.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📬</div>
+                        <div class="title">No sent payments</div>
+                        <div class="subtitle">Completed payments will appear here</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = sent.map(renderPaymentCard).join('');
+        }
+
+        function renderReports() {
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const monthPayments = window.payments.filter(p => p.date?.startsWith(currentMonth));
+            
+            const income = monthPayments
+                .filter(p => p.type === 'income' && p.status === 'sent')
+                .reduce((sum, p) => sum + p.amount, 0);
+            
+            const expense = monthPayments
+                .filter(p => p.type === 'expense' && p.status === 'sent')
+                .reduce((sum, p) => sum + p.amount, 0);
+            
+            const balance = income - expense;
+            
+            document.getElementById('monthlyReport').innerHTML = `
+                <div class="report-row">
+                    <span>Total Income</span>
+                    <span style="color: var(--success);">£${income.toFixed(2)}</span>
+                </div>
+                <div class="report-row">
+                    <span>Total Expenses</span>
+                    <span style="color: var(--danger);">£${expense.toFixed(2)}</span>
+                </div>
+                <div class="report-row">
+                    <span>Net Balance</span>
+                    <span style="color: ${balance >= 0 ? 'var(--success)' : 'var(--danger)'};">£${balance.toFixed(2)}</span>
+                </div>
+            `;
+            
+            const statementsContainer = document.getElementById('statementsList');
+            if (window.statements.length === 0) {
+                statementsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📄</div>
+                        <div class="title">No statements</div>
+                        <div class="subtitle">Upload bank statements for reference and reconciliation</div>
+                    </div>
+                `;
+            } else {
+                statementsContainer.innerHTML = window.statements
+                    .sort((a, b) => new Date(b.month) - new Date(a.month))
+                    .map(s => {
+                        const monthName = new Date(s.month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                        const typeIcon = s.type === 'bank' ? '🏦' : s.type === 'cash' ? '💵' : '📄';
+                        const fileSize = (s.fileSize / 1024).toFixed(1);
+                        
+                        return `
+                            <div class="statement-card">
+                                <div class="statement-info">
+                                    <div class="name">${typeIcon} ${monthName}</div>
+                                    <div class="date">${s.fileName} • ${fileSize} KB</div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-view" onclick="viewStatement('${s.id}')" style="padding: 8px 14px; width: auto;">View</button>
+                                    <button onclick="deleteStatement('${s.id}')" style="background: var(--danger); color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer;">×</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+            }
+        }
+
+        // File input handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Invoice file input
+            const invoiceFileInput = document.getElementById('invoiceFile');
+            if (fileInput) {
+                fileInput.addEventListener('change', async function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const fileName = file.name;
+                    document.getElementById('invoiceFileName').textContent = fileName;
+                    
+                    // Only process images for OCR (not PDFs)
+                    if (file.type.startsWith('image/')) {
+                        await processInvoice(file);
+                    } else if (file.type === 'application/pdf') {
+                        // For PDFs, try to extract filename info
+                        const preview = document.getElementById('invoicePreview');
+                        const previewImage = document.getElementById('previewImage');
+                        previewImage.style.display = 'none';
+                        preview.classList.add('active');
+                        
+                        // Extract data from filename if possible
+                        const filenameData = extractFromFilename(fileName);
+                        displayExtractedData(filenameData);
+                        autoFillForm(filenameData);
+                        
+                        document.getElementById('extractedData').innerHTML = `
+                            <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                                <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+                                <div style="font-weight: 600; margin-bottom: 8px;">PDF uploaded</div>
+                                <div style="font-size: 14px;">OCR only works with images. Please take a photo of the PDF or fill in manually.</div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            
+            // Statement file input
+            const statementFileInput = document.getElementById('statementFile');
+            if (statementFileInput) {
+                statementFileInput.addEventListener('change', function(e) {
+                    const fileName = e.target.files[0]?.name || 'PDF, Excel, or CSV';
+                    document.getElementById('statementFileName').textContent = fileName;
+                });
+            }
+        });
+
+        function extractFromFilename(filename) {
+            const data = {
+                amount: null,
+                description: null,
+                supplier: null,
+                date: null,
+                invoiceNumber: null
+            };
+            
+            // Try to extract invoice number from filename
+            const invoiceMatch = filename.match(/(?:invoice|inv|bill|INV|T0)[\s_-]*(\d+)/i);
+            if (invoiceMatch) {
+                data.invoiceNumber = invoiceMatch[1];
+                data.description = `Invoice #${data.invoiceNumber}`;
+            } else {
+                // Use filename without extension as description
+                data.description = filename.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
+            }
+            
+            // Try to extract date from filename (YYYY-MM-DD or similar)
+            const dateMatch = filename.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
+            if (dateMatch) {
+                data.date = dateMatch[1].replace(/_/g, '-');
+            }
+            
+            return data;
+        }
+
+        async function processInvoice(file) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const preview = document.getElementById('invoicePreview');
+            const previewImage = document.getElementById('previewImage');
+            
+            try {
+                // Show loading
+                loadingOverlay.classList.add('active');
+                
+                // Create image URL for preview
+                const imageUrl = URL.createObjectURL(file);
+                previewImage.src = imageUrl;
+                previewImage.style.display = 'block';
+                
+                console.log('Starting OCR processing...');
+                
+                // Run OCR
+                const result = await Tesseract.recognize(
+                    file,
+                    'eng',
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = Math.round(m.progress * 100);
+                                const subtext = document.querySelector('.loading-subtext');
+                                if (subtext) {
+                                    subtext.textContent = `Processing... ${progress}%`;
+                                }
+                            }
+                        }
+                    }
+                );
+                
+                // Extract data from OCR text
+                const text = result.data.text;
+                console.log('Extracted text:', text);
+                
+                const extractedData = extractInvoiceData(text);
+                console.log('Parsed data:', extractedData);
+                
+                // Hide loading
+                loadingOverlay.classList.remove('active');
+                
+                // Show preview
+                preview.classList.add('active');
+                
+                // Display extracted data
+                displayExtractedData(extractedData);
+                
+                // Auto-fill form - THIS IS THE KEY PART
+                setTimeout(() => {
+                    autoFillForm(extractedData);
+                }, 100);
+                
+            } catch (error) {
+                console.error('OCR Error:', error);
+                loadingOverlay.classList.remove('active');
+                alert('Could not read invoice. Please fill in manually.');
+            }
+        }
+
+        function extractInvoiceData(text) {
+            const data = {
+                amount: null,
+                description: null,
+                supplier: null,
+                date: null,
+                invoiceNumber: null
+            };
+            
+            // Extract amount - look for £ or patterns like 100.00, £100.00, Total: 100.00
+            const amountPatterns = [
+                /(?:total|amount|balance|due|pay)[\s:£]*(\d+\.?\d{0,2})/gi,
+                /£\s*(\d+\.?\d{0,2})/g,
+                /(\d+\.\d{2})(?:\s*GBP)?/g
+            ];
+            
+            for (const pattern of amountPatterns) {
+                const matches = text.match(pattern);
+                if (matches && matches.length > 0) {
+                    const nums = matches.map(m => {
+                        const num = m.match(/\d+\.?\d{0,2}/);
+                        return num ? parseFloat(num[0]) : 0;
+                    });
+                    // Get the largest number (likely the total)
+                    data.amount = Math.max(...nums);
+                    if (data.amount > 0) break;
+                }
+            }
+            
+            // Extract supplier/company name (usually at top)
+            const lines = text.split('\n').filter(line => line.trim().length > 0);
+            if (lines.length > 0) {
+                data.supplier = lines[0].trim();
+                data.description = `Invoice from ${data.supplier}`;
+            }
+            
+            // Extract invoice number
+            const invoiceMatch = text.match(/(?:invoice|inv|bill)[\s#:]*(\w+\d+)/gi);
+            if (invoiceMatch) {
+                data.invoiceNumber = invoiceMatch[0].replace(/(?:invoice|inv|bill)[\s#:]*/gi, '');
+            }
+            
+            // Extract date
+            const dateMatch = text.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/);
+            if (dateMatch) {
+                data.date = dateMatch[0];
+            }
+            
+            return data;
+        }
+
+        function displayExtractedData(data) {
+            const container = document.getElementById('extractedData');
+            let html = '';
+            
+            if (data.amount) {
+                html += `
+                    <div class="extracted-item">
+                        <div class="extracted-label">Amount</div>
+                        <div class="extracted-value">£${data.amount.toFixed(2)}</div>
+                    </div>
+                `;
+            }
+            
+            if (data.supplier) {
+                html += `
+                    <div class="extracted-item">
+                        <div class="extracted-label">Supplier</div>
+                        <div class="extracted-value">${data.supplier}</div>
+                    </div>
+                `;
+            }
+            
+            if (data.invoiceNumber) {
+                html += `
+                    <div class="extracted-item">
+                        <div class="extracted-label">Invoice #</div>
+                        <div class="extracted-value">${data.invoiceNumber}</div>
+                    </div>
+                `;
+            }
+            
+            if (data.date) {
+                html += `
+                    <div class="extracted-item">
+                        <div class="extracted-label">Date</div>
+                        <div class="extracted-value">${data.date}</div>
+                    </div>
+                `;
+            }
+            
+            if (html === '') {
+                html = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No data extracted. Please fill manually.</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function autoFillForm(data) {
+            console.log('Auto-filling form with:', data);
+            
+            // Fill amount
+            if (data.amount && data.amount > 0) {
+                const amountField = document.getElementById('paymentAmount');
+                if (amountField) {
+                    amountField.value = data.amount.toFixed(2);
+                    amountField.style.borderColor = 'var(--primary)';
+                    console.log('Filled amount:', data.amount);
+                }
+            }
+            
+            // Fill description
+            if (data.description) {
+                const descField = document.getElementById('paymentDesc');
+                if (descField) {
+                    descField.value = data.description;
+                    descField.style.borderColor = 'var(--primary)';
+                    console.log('Filled description:', data.description);
+                }
+            }
+            
+            // Fill notes
+            if (data.invoiceNumber || data.date) {
+                const notes = document.getElementById('paymentNotes');
+                if (notes) {
+                    let noteText = '';
+                    if (data.invoiceNumber) {
+                        noteText = `Invoice #${data.invoiceNumber}`;
+                    }
+                    if (data.date) {
+                        noteText += noteText ? `\nDate: ${data.date}` : `Date: ${data.date}`;
+                    }
+                    notes.value = noteText;
+                    console.log('Filled notes:', noteText);
+                }
+            }
+            
+            // Scroll to description field
+            setTimeout(() => {
+                const descField = document.getElementById('paymentDesc');
+                if (descField) {
+                    descField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    descField.focus();
+                }
+            }, 500);
+        }
+
+        // Initialize
+        loadPayments();
+    </script>
+</body>
+</html>
