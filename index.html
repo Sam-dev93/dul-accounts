@@ -50,17 +50,19 @@
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
             background: var(--background);
             color: var(--text-primary);
-            padding-bottom: 100px;
             padding-top: env(safe-area-inset-top);
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .header {
             background: var(--card-bg);
             padding: 20px 24px 24px;
-            padding-top: calc(env(safe-area-inset-top) + 20px);
-            position: sticky;
+            padding-top: max(env(safe-area-inset-top), 20px);
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 100;
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -96,9 +98,15 @@
             font-weight: 500;
         }
 
+        .view-content {
+            padding-top: 120px;
+            padding-bottom: calc(90px + env(safe-area-inset-bottom));
+            min-height: 100vh;
+        }
+
         .fab {
             position: fixed;
-            bottom: calc(80px + env(safe-area-inset-bottom));
+            bottom: calc(90px + env(safe-area-inset-bottom));
             right: 24px;
             width: 60px;
             height: 60px;
@@ -139,8 +147,6 @@
             padding: 20px;
             box-shadow: 0 4px 16px var(--shadow);
             border: 1px solid var(--border);
-            position: relative;
-            overflow: hidden;
         }
 
         .stat-card .label {
@@ -349,7 +355,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(28, 28, 30, 0.8);
+            background: rgba(28, 28, 30, 0.95);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
@@ -363,7 +369,7 @@
 
         @media (prefers-color-scheme: light) {
             .bottom-nav {
-                background: rgba(242, 242, 247, 0.8);
+                background: rgba(242, 242, 247, 0.95);
             }
         }
 
@@ -772,30 +778,32 @@
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card pending">
-                <div class="label">Pending</div>
-                <div class="value" id="pendingCount">0</div>
+        <div class="view-content">
+            <div class="stats-grid">
+                <div class="stat-card pending">
+                    <div class="label">Pending</div>
+                    <div class="value" id="pendingCount">0</div>
+                </div>
+                <div class="stat-card approved">
+                    <div class="label">Approved</div>
+                    <div class="value" id="approvedCount">0</div>
+                </div>
+                <div class="stat-card income">
+                    <div class="label">Month In</div>
+                    <div class="value" id="monthIncome">£0</div>
+                </div>
+                <div class="stat-card expense">
+                    <div class="label">Month Out</div>
+                    <div class="value" id="monthExpense">£0</div>
+                </div>
             </div>
-            <div class="stat-card approved">
-                <div class="label">Approved</div>
-                <div class="value" id="approvedCount">0</div>
-            </div>
-            <div class="stat-card income">
-                <div class="label">Month In</div>
-                <div class="value" id="monthIncome">£0</div>
-            </div>
-            <div class="stat-card expense">
-                <div class="label">Month Out</div>
-                <div class="value" id="monthExpense">£0</div>
-            </div>
-        </div>
 
-        <div class="container">
-            <div class="section-header">
-                <h2>Recent Activity</h2>
+            <div class="container">
+                <div class="section-header">
+                    <h2>Recent Activity</h2>
+                </div>
+                <div id="recentPayments" class="payment-list"></div>
             </div>
-            <div id="recentPayments" class="payment-list"></div>
         </div>
     </div>
 
@@ -806,8 +814,10 @@
                 <div class="subtitle">Awaiting approval</div>
             </div>
         </div>
-        <div class="container" id="pendingContainer">
-            <div id="pendingPayments" class="payment-list"></div>
+        <div class="view-content">
+            <div class="container">
+                <div id="pendingPayments" class="payment-list"></div>
+            </div>
         </div>
     </div>
 
@@ -818,8 +828,10 @@
                 <div class="subtitle">Ready to send</div>
             </div>
         </div>
-        <div class="container" id="approvedContainer">
-            <div id="approvedPayments" class="payment-list"></div>
+        <div class="view-content">
+            <div class="container">
+                <div id="approvedPayments" class="payment-list"></div>
+            </div>
         </div>
     </div>
 
@@ -830,8 +842,10 @@
                 <div class="subtitle">Completed payments</div>
             </div>
         </div>
-        <div class="container" id="sentContainer">
-            <div id="sentPayments" class="payment-list"></div>
+        <div class="view-content">
+            <div class="container">
+                <div id="sentPayments" class="payment-list"></div>
+            </div>
         </div>
     </div>
 
@@ -842,17 +856,19 @@
                 <div class="subtitle">Monthly overview</div>
             </div>
         </div>
-        <div class="container" id="reportsContainer">
-            <div class="section-header">
-                <h2>Current Month</h2>
-            </div>
-            <div class="report-card" id="monthlyReport"></div>
+        <div class="view-content">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Current Month</h2>
+                </div>
+                <div class="report-card" id="monthlyReport"></div>
 
-            <div class="section-header">
-                <h2>Statements</h2>
-                <button class="action-btn" onclick="showUploadStatement()" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);">+ Upload</button>
+                <div class="section-header">
+                    <h2>Statements</h2>
+                    <button class="action-btn" onclick="showUploadStatement()" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);">+ Upload</button>
+                </div>
+                <div id="statementsList"></div>
             </div>
-            <div id="statementsList"></div>
         </div>
     </div>
 
@@ -1132,6 +1148,8 @@
                 payment.status = 'approved';
                 saveData();
                 loadPayments();
+                renderPendingPayments();
+                renderApprovedPayments();
             }
         };
 
@@ -1142,6 +1160,8 @@
                 payment.sentAt = new Date().toISOString();
                 saveData();
                 loadPayments();
+                renderApprovedPayments();
+                renderSentPayments();
             }
         };
 
@@ -1151,6 +1171,9 @@
             window.payments = window.payments.filter(p => p.id !== id);
             saveData();
             loadPayments();
+            renderPendingPayments();
+            renderApprovedPayments();
+            renderSentPayments();
         };
 
         window.viewInvoice = function(id) {
@@ -1621,6 +1644,7 @@
                     <div class="extracted-item">
                         <div class="extracted-label">Invoice #</div>
                         <div class="extracted-value">${data.invoiceNumber}</div>
+                    </div>
                 `;
             }
             
@@ -1689,7 +1713,7 @@
             console.log('Setting up file inputs...');
             
             const cameraInput = document.getElementById('invoiceFileCamera');
-            if (cameraInput) {
+            if (cameraInput && !cameraInput.dataset.listenerAttached) {
                 cameraInput.addEventListener('change', async function(e) {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -1701,11 +1725,12 @@
                         await processInvoice(file);
                     }
                 });
+                cameraInput.dataset.listenerAttached = 'true';
                 console.log('Camera input handler attached');
             }
             
             const uploadInput = document.getElementById('invoiceFileUpload');
-            if (uploadInput) {
+            if (uploadInput && !uploadInput.dataset.listenerAttached) {
                 uploadInput.addEventListener('change', async function(e) {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -1741,15 +1766,17 @@
                         }
                     }
                 });
+                uploadInput.dataset.listenerAttached = 'true';
                 console.log('Upload input handler attached');
             }
             
             const statementFileInput = document.getElementById('statementFile');
-            if (statementFileInput) {
+            if (statementFileInput && !statementFileInput.dataset.listenerAttached) {
                 statementFileInput.addEventListener('change', function(e) {
                     const fileName = e.target.files[0]?.name || 'PDF, Excel, or CSV';
                     document.getElementById('statementFileName').textContent = fileName;
                 });
+                statementFileInput.dataset.listenerAttached = 'true';
             }
         }
 
