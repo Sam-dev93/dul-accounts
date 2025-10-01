@@ -914,13 +914,21 @@
             <form onsubmit="addPayment(event)">
                 <div class="form-group">
                     <label class="form-label">Invoice / Receipt</label>
-                    <label class="file-upload-label" style="margin-top: 8px;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">📸</div>
-                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 16px;">Take Photo for Auto-Extract</div>
-                        <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;" id="invoiceFileName">Image files auto-extract • PDFs for storage only</div>
-                        <div style="font-size: 12px; color: var(--primary); font-weight: 600;">✨ Take photo of invoice/receipt for AI scanning</div>
-                        <input type="file" id="invoiceFile" accept="image/*,.pdf" capture="environment">
-                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+                        <label class="file-upload-label" style="margin: 0; padding: 20px;">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📸</div>
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Take Photo</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">AI Extract</div>
+                            <input type="file" id="invoiceFileCamera" accept="image/*" capture="environment" style="display: none;">
+                        </label>
+                        <label class="file-upload-label" style="margin: 0; padding: 20px;">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Upload File</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">Image/PDF</div>
+                            <input type="file" id="invoiceFileUpload" accept="image/*,.pdf" style="display: none;">
+                        </label>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;" id="invoiceFileName"></div>
                     <div class="invoice-preview" id="invoicePreview">
                         <div class="preview-title">
                             <span>🔍</span> Extracted Data
@@ -1118,7 +1126,11 @@
         window.addPayment = function(event) {
             event.preventDefault();
             
-            const invoiceFile = document.getElementById('invoiceFile').files[0];
+            // Get file from either camera or upload input
+            const cameraFile = document.getElementById('invoiceFileCamera').files[0];
+            const uploadFile = document.getElementById('invoiceFileUpload').files[0];
+            const invoiceFile = cameraFile || uploadFile;
+            
             let invoiceData = null;
             
             if (invoiceFile) {
@@ -1156,7 +1168,8 @@
             saveData();
             closeModal('addPaymentModal');
             document.querySelector('#addPaymentModal form').reset();
-            document.getElementById('invoiceFileName').textContent = 'PDF, Image, or take a photo';
+            document.getElementById('invoiceFileName').textContent = '';
+            document.getElementById('invoicePreview').classList.remove('active');
             loadPayments();
         }
 
