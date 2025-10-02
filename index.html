@@ -384,7 +384,7 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding: 10px 0 0 0;
+            padding: 10px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);
             display: flex;
             justify-content: space-around;
             z-index: 1000;
@@ -402,7 +402,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 4px 12px 0px 12px;  /* top: 4px, right: 12px, bottom: 0px, left: 12px */
+            padding: 4px 12px;
             cursor: pointer;
             color: var(--text-secondary);
             transition: all 0.3s;
@@ -413,10 +413,6 @@
 
         .nav-item.active {
             color: var(--primary);
-        }
-
-        .nav-item.active::before {
-            display: none;
         }
 
         .nav-item .icon {
@@ -1111,6 +1107,7 @@
     </div>
 
     <script>
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCz5GKCJfazH9e-4z4X5QNd4o9BZV8gMoU",
             authDomain: "dul-accounts.firebaseapp.com",
@@ -1120,77 +1117,213 @@
             appId: "1:508206162333:web:8fe26acd229aea1a93cf74"
         };
 
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Global variables
         window.payments = [];
-        let isOnline = false;
+        let isOnline = navigator.onLine;
+        let unsubscribe = null;
+        let syncTimeout = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
 
+        // Enable offline persistence for Firestore
+        db.enablePersistence({ synchronizeTabs: true })
+            .catch((err) => {
+                if (err.code == 'failed-precondition') {
+                    console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+                } else if (err.code == 'unimplemented') {
+                    console.log('Current browser does not support offline persistence');
+                }
+            });
+
+        // Initialize app on DOM load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DUL Accounts App Starting...');
-            initializeFirebase();
+            initializeApp();
             setupFileInputs();
+            setupNetworkHandlers();
         });
 
-        async function initializeFirebase() {
+        async function initializeApp() {
             try {
-                await auth.signInAnonymously();
-                console.log('Firebase initialized successfully');
-                isOnline = true;
-                updateSyncStatus('synced');
-                loadPayments();
-                setupRealtimeSync();
-            } catch (error) {
-                console.log('Firebase initialization failed, running offline:', error);
-                isOnline = false;
-                updateSyncStatus('offline');
+                // First load from localStorage for immediate display
                 loadPaymentsOffline();
+                
+                // Set auth persistence for PWA
+                await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                
+                // Setup auth state listener
+                auth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        console.log('User authenticated:', user.uid);
+                        onAuthSuccess();
+                    } else {
+                        console.log('User not authenticated, signing in...');
+                        try {
+                            await auth.signInAnonymously();
+                        } catch (error) {
+                            console.error('Sign in error:', error);
+                            handleOfflineMode();
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('App initialization error:', error);
+                handleOfflineMode();
+            }
+        }
+
+        function onAuthSuccess() {
+            isOnline = true;
+            retryCount = 0;
+            updateSyncStatus('syncing');
+            loadPayments();
+            setupRealtimeSync();
+        }
+
+        function handleOfflineMode() {
+            isOnline = false;
+            updateSyncStatus('offline');
+            
+            // Retry connection after delay
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                setTimeout(() => {
+                    console.log(`Retry attempt ${retryCount}/${MAX_RETRIES}`);
+                    if (navigator.onLine) {
+                        initializeApp();
+                    }
+                }, 5000 * retryCount);
+            }
+        }
+
+        function setupNetworkHandlers() {
+            // Listen for online/offline events
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+            
+            // Check connectivity periodically
+            setInterval(checkConnectivity, 10000);
+        }
+
+        async function handleOnline() {
+            console.log('Network online detected');
+            isOnline = true;
+            
+            if (!auth.currentUser) {
+                await initializeApp();
+            } else {
+                // Sync any pending changes
+                await saveData();
+                if (!unsubscribe) {
+                    setupRealtimeSync();
+                }
+            }
+        }
+
+        function handleOffline() {
+            console.log('Network offline detected');
+            isOnline = false;
+            updateSyncStatus('offline');
+            
+            // Clean up realtime listener
+            if (unsubscribe) {
+                unsubscribe();
+                unsubscribe = null;
+            }
+        }
+
+        async function checkConnectivity() {
+            if (!navigator.onLine) {
+                if (isOnline) {
+                    handleOffline();
+                }
+                return;
+            }
+            
+            // If we think we're offline but network is back
+            if (!isOnline && navigator.onLine) {
+                handleOnline();
             }
         }
 
         function setupRealtimeSync() {
-            db.collection('payments').doc('shared')
-                .onSnapshot((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        if (data.payments) {
-                            window.payments = data.payments;
-                            updateStats();
-                            renderRecentPayments();
-                            renderPendingPayments();
-                            renderApprovedPayments();
-                            renderSentPayments();
-                            renderCashControl();
+            // Clean up existing listener
+            if (unsubscribe) {
+                unsubscribe();
+            }
+            
+            unsubscribe = db.collection('payments').doc('shared')
+                .onSnapshot(
+                    { includeMetadataChanges: true },
+                    (doc) => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            if (data.payments) {
+                                window.payments = data.payments;
+                                localStorage.setItem('dulPayments', JSON.stringify(window.payments));
+                                updateUI();
+                                
+                                if (!doc.metadata.fromCache) {
+                                    updateSyncStatus('synced');
+                                }
+                            }
+                        }
+                    },
+                    (error) => {
+                        console.error('Realtime sync error:', error);
+                        if (error.code === 'permission-denied') {
+                            // Try to re-authenticate
+                            initializeApp();
+                        } else {
+                            handleOffline();
                         }
                     }
-                }, (error) => {
-                    console.log('Realtime sync error:', error);
-                    updateSyncStatus('offline');
-                });
+                );
         }
 
         async function saveData() {
-            updateSyncStatus('syncing');
-            
-            try {
-                if (isOnline) {
-                    await db.collection('payments').doc('shared').set({
-                        payments: window.payments,
-                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    updateSyncStatus('synced');
-                }
-            } catch (error) {
-                console.error('Error saving to Firebase:', error);
-                updateSyncStatus('offline');
+            // Clear any existing timeout
+            if (syncTimeout) {
+                clearTimeout(syncTimeout);
             }
             
+            updateSyncStatus('syncing');
+            
+            // Always save to localStorage first
             try {
                 localStorage.setItem('dulPayments', JSON.stringify(window.payments));
             } catch (e) {
                 console.error('LocalStorage save failed:', e);
             }
+            
+            // Debounce Firebase saves
+            syncTimeout = setTimeout(async () => {
+                try {
+                    if (isOnline && auth.currentUser) {
+                        await db.collection('payments').doc('shared').set({
+                            payments: window.payments,
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                            userId: auth.currentUser.uid
+                        });
+                        updateSyncStatus('synced');
+                    } else {
+                        updateSyncStatus('offline');
+                    }
+                } catch (error) {
+                    console.error('Error saving to Firebase:', error);
+                    updateSyncStatus('offline');
+                    
+                    // Retry once after a delay
+                    if (isOnline && auth.currentUser) {
+                        setTimeout(saveData, 2000);
+                    }
+                }
+            }, 500);
         }
 
         async function loadPayments() {
@@ -1202,22 +1335,21 @@
                 if (doc.exists) {
                     const data = doc.data();
                     window.payments = data.payments || [];
+                    
+                    // Update localStorage with server data
+                    localStorage.setItem('dulPayments', JSON.stringify(window.payments));
                 } else {
-                    try {
-                        const localData = localStorage.getItem('dulPayments');
-                        window.payments = localData ? JSON.parse(localData) : [];
-                        
-                        if (window.payments.length > 0) {
-                            await saveData();
-                        }
-                    } catch (e) {
-                        console.error('LocalStorage load failed:', e);
-                        window.payments = [];
+                    // No server data, use local data
+                    const localData = localStorage.getItem('dulPayments');
+                    window.payments = localData ? JSON.parse(localData) : [];
+                    
+                    // Save local data to server
+                    if (window.payments.length > 0) {
+                        await saveData();
                     }
                 }
                 
-                updateStats();
-                renderRecentPayments();
+                updateUI();
                 updateSyncStatus('synced');
                 
             } catch (error) {
@@ -1235,8 +1367,16 @@
                 console.error('LocalStorage load failed:', e);
                 window.payments = [];
             }
+            updateUI();
+        }
+
+        function updateUI() {
             updateStats();
             renderRecentPayments();
+            renderPendingPayments();
+            renderApprovedPayments();
+            renderSentPayments();
+            renderCashControl();
         }
 
         function updateSyncStatus(status) {
@@ -1259,6 +1399,7 @@
             }
         }
 
+        // Form handlers
         window.handleCategoryChange = function() {
             const category = document.getElementById('paymentCategory').value;
             const typeGroup = document.getElementById('paymentTypeGroup');
@@ -1300,6 +1441,7 @@
             document.getElementById('paymentMethod').setAttribute('required', 'required');
         };
 
+        // Modal handlers
         window.showAddPayment = function() {
             const modal = document.getElementById('addPaymentModal');
             if (modal) {
@@ -1323,12 +1465,14 @@
             }
         };
 
+        // Click outside to close modals
         window.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal') || e.target.classList.contains('image-modal')) {
                 e.target.classList.remove('active');
             }
         });
 
+        // View switching
         window.switchView = function(view) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1336,12 +1480,14 @@
             document.getElementById(view + 'View').classList.add('active');
             event.currentTarget.classList.add('active');
             
+            // Re-render view content
             if (view === 'pending') renderPendingPayments();
             if (view === 'approved') renderApprovedPayments();
             if (view === 'cashControl') renderCashControl();
             if (view === 'sent') renderSentPayments();
         };
 
+        // Payment operations
         window.addPayment = function(event) {
             event.preventDefault();
             
@@ -1396,13 +1542,13 @@
             window.payments.unshift(payment);
             saveData();
             closeModal('addPaymentModal');
+            
+            // Reset form
             document.querySelector('#addPaymentModal form').reset();
             document.getElementById('invoiceFileName').textContent = '';
             document.getElementById('invoicePreview').classList.remove('active');
             
-            updateStats();
-            renderRecentPayments();
-            renderPendingPayments();
+            updateUI();
         }
 
         window.approvePayment = function(id) {
@@ -1414,11 +1560,7 @@
                     payment.status = 'approved';
                 }
                 saveData();
-                updateStats();
-                renderRecentPayments();
-                renderPendingPayments();
-                renderApprovedPayments();
-                renderCashControl();
+                updateUI();
             }
         };
 
@@ -1437,11 +1579,7 @@
                 payment.status = 'sent';
                 payment.sentAt = new Date().toISOString();
                 saveData();
-                updateStats();
-                renderRecentPayments();
-                renderApprovedPayments();
-                renderSentPayments();
-                renderCashControl();
+                updateUI();
             }
         };
 
@@ -1450,12 +1588,7 @@
             
             window.payments = window.payments.filter(p => p.id !== id);
             saveData();
-            updateStats();
-            renderRecentPayments();
-            renderPendingPayments();
-            renderApprovedPayments();
-            renderSentPayments();
-            renderCashControl();
+            updateUI();
         };
 
         window.viewInvoice = function(id) {
@@ -1481,6 +1614,7 @@
             }
         };
 
+        // Calculations
         function calculateCashPot() {
             const cashIn = window.payments
                 .filter(p => p.type === 'income' && p.paymentMethod === 'cash' && p.status === 'in-pot')
@@ -1512,6 +1646,7 @@
             document.getElementById('cashPotDetail').textContent = '£' + cashPot.toFixed(2);
             document.getElementById('monthExpense').textContent = '£' + expense.toFixed(2);
             
+            // Update badges
             const pendingBadge = document.getElementById('pendingBadge');
             const approvedBadge = document.getElementById('approvedBadge');
             
@@ -1530,6 +1665,7 @@
             }
         }
 
+        // Render functions
         function renderPaymentCard(payment) {
             const statusClass = `status-${payment.status}`;
             let statusText = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
@@ -1679,6 +1815,7 @@
             container.innerHTML = sent.map(renderPaymentCard).join('');
         }
 
+        // OCR and file handling
         async function processInvoice(file) {
             const loadingOverlay = document.getElementById('loadingOverlay');
             const preview = document.getElementById('invoicePreview');
@@ -1740,6 +1877,7 @@
                 invoiceNumber: null
             };
             
+            // Extract amounts
             const amountPatterns = [
                 /(?:total|amount|balance|due|pay)[\s:£]*(\d+\.?\d{0,2})/gi,
                 /£\s*(\d+\.?\d{0,2})/g,
@@ -1758,17 +1896,20 @@
                 }
             }
             
+            // Extract supplier and description
             const lines = text.split('\n').filter(line => line.trim().length > 0);
             if (lines.length > 0) {
                 data.supplier = lines[0].trim();
                 data.description = `Invoice from ${data.supplier}`;
             }
             
+            // Extract invoice number
             const invoiceMatch = text.match(/(?:invoice|inv|bill)[\s#:]*(\w+\d+)/gi);
             if (invoiceMatch) {
                 data.invoiceNumber = invoiceMatch[0].replace(/(?:invoice|inv|bill)[\s#:]*/gi, '');
             }
             
+            // Extract date
             const dateMatch = text.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/);
             if (dateMatch) {
                 data.date = dateMatch[0];
@@ -1786,6 +1927,7 @@
                 invoiceNumber: null
             };
             
+            // Extract invoice number from filename
             const invoiceMatch = filename.match(/(?:invoice|inv|bill|INV|T0)[\s_-]*(\d+)/i);
             if (invoiceMatch) {
                 data.invoiceNumber = invoiceMatch[1];
@@ -1794,6 +1936,7 @@
                 data.description = filename.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
             }
             
+            // Extract date from filename
             const dateMatch = filename.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
             if (dateMatch) {
                 data.date = dateMatch[1].replace(/_/g, '-');
@@ -1857,7 +2000,6 @@
                 if (amountField) {
                     amountField.value = data.amount.toFixed(2);
                     amountField.style.borderColor = 'var(--primary)';
-                    console.log('Filled amount:', data.amount);
                 }
             }
             
@@ -1866,7 +2008,6 @@
                 if (descField) {
                     descField.value = data.description;
                     descField.style.borderColor = 'var(--primary)';
-                    console.log('Filled description:', data.description);
                 }
             }
             
@@ -1881,10 +2022,10 @@
                         noteText += noteText ? `\nDate: ${data.date}` : `Date: ${data.date}`;
                     }
                     notes.value = noteText;
-                    console.log('Filled notes:', noteText);
                 }
             }
             
+            // Scroll to description field
             setTimeout(() => {
                 const descField = document.getElementById('paymentDesc');
                 if (descField) {
@@ -1911,7 +2052,6 @@
                     }
                 });
                 cameraInput.dataset.listenerAttached = 'true';
-                console.log('Camera input handler attached');
             }
             
             const uploadInput = document.getElementById('invoiceFileUpload');
@@ -1921,14 +2061,12 @@
                     if (!file) return;
                     
                     const fileName = file.name;
-                    console.log('Upload file selected:', fileName, 'Type:', file.type);
+                    console.log('Upload file selected:', fileName);
                     document.getElementById('invoiceFileName').textContent = '📁 ' + fileName;
                     
                     if (file.type.startsWith('image/')) {
-                        console.log('Processing uploaded image with OCR...');
                         await processInvoice(file);
                     } else if (file.type === 'application/pdf') {
-                        console.log('PDF uploaded - no OCR available');
                         const preview = document.getElementById('invoicePreview');
                         const previewImage = document.getElementById('previewImage');
                         if (preview && previewImage) {
@@ -1952,12 +2090,14 @@
                     }
                 });
                 uploadInput.dataset.listenerAttached = 'true';
-                console.log('Upload input handler attached');
             }
         }
 
+        // Service Worker registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
         }
 
         console.log('App initialized successfully');
