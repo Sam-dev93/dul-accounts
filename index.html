@@ -119,13 +119,13 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 75px);
             min-height: 0;
         }
 
         .fab {
             position: fixed;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 75px);
             right: 24px;
             width: 60px;
             height: 60px;
@@ -384,7 +384,7 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding: 6px 0 0 0;
+            padding: 8px 0 calc(env(safe-area-inset-bottom, 0px) + 8px);
             display: flex;
             justify-content: space-around;
             z-index: 1000;
@@ -402,7 +402,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 6px 12px 3px 12px;
+            padding: 4px 12px;
             cursor: pointer;
             color: var(--text-secondary);
             transition: all 0.3s;
@@ -441,7 +441,6 @@
         .nav-item .label {
             font-size: 10px;
             font-weight: 600;
-            line-height: 1;
         }
 
         .nav-item .badge {
