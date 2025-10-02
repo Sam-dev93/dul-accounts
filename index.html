@@ -52,40 +52,33 @@
             }
         }
 
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow-x: hidden;
-            position: fixed;
-            /* PWA specific fixes */
-            -webkit-user-select: none;
-            user-select: none;
+        html {
+            height: 100vh;
+            height: -webkit-fill-available;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
             background: var(--background);
             color: var(--text-primary);
-            /* PWA viewport fix */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
+            height: 100vh;
+            height: -webkit-fill-available;
+            overflow: hidden;
+            position: relative;
         }
 
         .app-container {
-            width: 100%;
-            height: 100%;
             display: flex;
             flex-direction: column;
+            height: 100vh;
+            height: -webkit-fill-available;
             position: relative;
         }
 
         .header {
             background: var(--card-bg);
-            padding: 20px 24px 24px;
-            /* PWA specific padding - don't use env() in padding-top as body already handles it */
-            padding-top: 20px;
-            position: sticky;
-            top: 0;
+            padding: 60px 24px 24px;
+            position: relative;
             z-index: 100;
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -126,13 +119,12 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            /* PWA specific - simpler padding */
-            padding-bottom: 100px;
+            padding-bottom: 120px;
         }
 
         .fab {
             position: fixed;
-            bottom: 90px;
+            bottom: 100px;
             right: 24px;
             width: 60px;
             height: 60px;
@@ -391,11 +383,9 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            /* PWA specific - don't add env() here as body handles it */
-            padding-bottom: 20px;
+            padding: 12px 0 40px 0;
             display: flex;
             justify-content: space-around;
-            padding-top: 12px;
             z-index: 1000;
             box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
@@ -489,7 +479,7 @@
             background: var(--card-bg);
             border-radius: 24px 24px 0 0;
             padding: 32px 24px;
-            padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+            padding-bottom: 60px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -868,6 +858,17 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        /* iOS specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            .header {
+                padding-top: 80px;
+            }
+            
+            .bottom-nav {
+                padding-bottom: 50px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1127,14 +1128,14 @@
     </div>
 
     <script>
-        // Firebase Configuration - REPLACE WITH YOUR CONFIG
+        // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
+            apiKey: "AIzaSyCz5GKCJfazH9e-4z4X5QNd4o9BZV8gMoU",
+            authDomain: "dul-accounts.firebaseapp.com",
+            projectId: "dul-accounts",
+            storageBucket: "dul-accounts.firebasestorage.app",
+            messagingSenderId: "508206162333",
+            appId: "1:508206162333:web:8fe26acd229aea1a93cf74"
         };
 
         // Initialize Firebase
