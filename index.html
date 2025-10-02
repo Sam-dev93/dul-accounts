@@ -385,10 +385,11 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding: 4px 0; /* Much tighter padding */
+            padding: 0; /* Remove ALL padding */
             display: flex;
             justify-content: space-around;
-            align-items: stretch; /* Add this */
+            align-items: center; /* Center items vertically */
+            height: 60px; /* Fixed height */
             z-index: 1000;
             box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
@@ -404,15 +405,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* Add this */
-            padding: 0 12px;
-            min-height: 50px; /* Add this - forces items to fill space */
+            justify-content: center;
+            padding: 8px 12px; /* Small even padding all around */
             cursor: pointer;
             color: var(--text-secondary);
             transition: all 0.3s;
             flex: 1;
             max-width: 80px;
             position: relative;
+            height: 100%; /* Fill the nav bar height */
         }
 
         .nav-item.active {
