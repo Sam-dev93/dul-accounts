@@ -385,9 +385,10 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding: 8px 0 8px 0; /* Changed: 10px top to 8px, added 8px bottom */
+            padding: 4px 0; /* Much tighter padding */
             display: flex;
             justify-content: space-around;
+            align-items: stretch; /* Add this */
             z-index: 1000;
             box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
@@ -403,7 +404,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 0 12px; /* Removed top/bottom padding, just horizontal */
+            justify-content: center; /* Add this */
+            padding: 0 12px;
+            min-height: 50px; /* Add this - forces items to fill space */
             cursor: pointer;
             color: var(--text-secondary);
             transition: all 0.3s;
