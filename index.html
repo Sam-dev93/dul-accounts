@@ -57,12 +57,18 @@
             height: 100%;
             overflow-x: hidden;
             position: fixed;
+            /* PWA specific fixes */
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
             background: var(--background);
             color: var(--text-primary);
+            /* PWA viewport fix */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .app-container {
@@ -76,7 +82,8 @@
         .header {
             background: var(--card-bg);
             padding: 20px 24px 24px;
-            padding-top: max(env(safe-area-inset-top, 50px), 50px);
+            /* PWA specific padding - don't use env() in padding-top as body already handles it */
+            padding-top: 20px;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -119,12 +126,13 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: calc(110px + env(safe-area-inset-bottom));
+            /* PWA specific - simpler padding */
+            padding-bottom: 100px;
         }
 
         .fab {
             position: fixed;
-            bottom: calc(110px + env(safe-area-inset-bottom));
+            bottom: 90px;
             right: 24px;
             width: 60px;
             height: 60px;
@@ -383,7 +391,8 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding-bottom: env(safe-area-inset-bottom);
+            /* PWA specific - don't add env() here as body handles it */
+            padding-bottom: 20px;
             display: flex;
             justify-content: space-around;
             padding-top: 12px;
