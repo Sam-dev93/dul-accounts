@@ -1532,7 +1532,7 @@
             });
         }
 
-        // UPLOAD IMAGE TO TELEGRAPH
+        // UPLOAD IMAGE TO TELEGRAPH WITH FALLBACK
         async function uploadImageToTelegraph(file) {
             try {
                 const formData = new FormData();
@@ -1541,7 +1541,8 @@
                 console.log('Uploading to Telegraph...');
                 const response = await fetch(TELEGRAPH_UPLOAD_URL, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    mode: 'cors'
                 });
                 
                 if (!response.ok) {
@@ -1559,8 +1560,20 @@
                 }
             } catch (error) {
                 console.error('Telegraph upload error:', error);
-                throw error;
+                console.log('Falling back to base64 storage');
+                // Fallback to base64 if Telegraph fails
+                return null;
             }
+        }
+
+        // Convert file to base64
+        async function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
         }
 
         // Form handlers
@@ -1663,24 +1676,40 @@
                         loadingText.textContent = 'Compressing Image...';
                         loadingSubtext.textContent = 'Optimizing for upload';
                         
-                        invoiceFile = await compressImage(invoiceFile);
+                        invoiceFile = await compressImage(invoiceFile, 800, 0.6); // Smaller size for better compatibility
                         
-                        // Upload to Telegraph
+                        // Try to upload to Telegraph
                         loadingText.textContent = 'Uploading Image...';
                         loadingSubtext.textContent = 'Uploading to cloud';
                         
-                        const imageUrl = await uploadImageToTelegraph(invoiceFile);
+                        let imageUrl = await uploadImageToTelegraph(invoiceFile);
+                        let invoiceData;
+                        
+                        if (imageUrl) {
+                            // Telegraph upload successful
+                            invoiceData = {
+                                name: invoiceFile.name,
+                                type: invoiceFile.type,
+                                url: imageUrl,
+                                uploadedAt: new Date().toISOString()
+                            };
+                        } else {
+                            // Telegraph failed, use base64 fallback
+                            loadingText.textContent = 'Saving Image...';
+                            loadingSubtext.textContent = 'Using local storage';
+                            
+                            const base64Data = await fileToBase64(invoiceFile);
+                            invoiceData = {
+                                name: invoiceFile.name,
+                                type: invoiceFile.type,
+                                data: base64Data,
+                                uploadedAt: new Date().toISOString()
+                            };
+                        }
                         
                         loadingOverlay.classList.remove('active');
                         loadingText.textContent = 'Scanning Invoice...';
                         loadingSubtext.textContent = 'Extracting data from image';
-                        
-                        const invoiceData = {
-                            name: invoiceFile.name,
-                            type: invoiceFile.type,
-                            url: imageUrl,
-                            uploadedAt: new Date().toISOString()
-                        };
                         
                         savePaymentWithInvoice(invoiceData, Date.now().toString());
                         
@@ -1688,10 +1717,10 @@
                         console.error('Image processing error:', error);
                         const loadingOverlay = document.getElementById('loadingOverlay');
                         loadingOverlay.classList.remove('active');
-                        alert('Failed to upload image. Please check your internet connection and try again.');
+                        alert('Failed to process image. Please try again.');
                     }
                 } else if (invoiceFile.type === 'application/pdf') {
-                    // For PDFs, store as base64 (they're usually smaller)
+                    // For PDFs, store as base64
                     const reader = new FileReader();
                     reader.onloadend = function() {
                         const invoiceData = {
