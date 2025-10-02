@@ -77,7 +77,8 @@
 
         .header {
             background: var(--card-bg);
-            padding: 60px 24px 24px;
+            padding: env(safe-area-inset-top, 44px) 24px 24px;
+            padding-top: calc(env(safe-area-inset-top, 0px) + 44px);
             position: relative;
             z-index: 100;
             backdrop-filter: blur(20px) saturate(180%);
@@ -119,12 +120,12 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 120px;
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
         }
 
         .fab {
             position: fixed;
-            bottom: 100px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
             right: 24px;
             width: 60px;
             height: 60px;
@@ -383,7 +384,8 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding: 12px 0 40px 0;
+            padding: 8px 0 env(safe-area-inset-bottom, 8px);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
             display: flex;
             justify-content: space-around;
             z-index: 1000;
@@ -401,12 +403,12 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 8px 16px;
+            padding: 6px 12px;
             cursor: pointer;
             color: var(--text-secondary);
             transition: all 0.3s;
             flex: 1;
-            max-width: 100px;
+            max-width: 80px;
             position: relative;
         }
 
@@ -427,9 +429,9 @@
         }
 
         .nav-item .icon {
-            width: 26px;
-            height: 26px;
-            margin-bottom: 4px;
+            width: 24px;
+            height: 24px;
+            margin-bottom: 3px;
             transition: transform 0.2s;
         }
 
@@ -438,22 +440,22 @@
         }
 
         .nav-item .label {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
         }
 
         .nav-item .badge {
             position: absolute;
-            top: 4px;
+            top: 2px;
             right: 50%;
-            margin-right: -20px;
+            margin-right: -18px;
             background: linear-gradient(135deg, var(--danger) 0%, #DC3545 100%);
             color: white;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
-            padding: 3px 7px;
-            border-radius: 12px;
-            min-width: 20px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            min-width: 16px;
             text-align: center;
             box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
         }
@@ -479,7 +481,7 @@
             background: var(--card-bg);
             border-radius: 24px 24px 0 0;
             padding: 32px 24px;
-            padding-bottom: 60px;
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -817,18 +819,18 @@
 
         .sync-status {
             position: fixed;
-            top: 20px;
+            top: calc(env(safe-area-inset-top, 0px) + 12px);
             right: 20px;
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 20px;
-            padding: 8px 16px;
-            font-size: 12px;
+            padding: 6px 12px;
+            font-size: 11px;
             font-weight: 600;
             z-index: 1001;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
         .sync-status.syncing {
@@ -857,17 +859,6 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
-        }
-
-        /* iOS specific fixes */
-        @supports (-webkit-touch-callout: none) {
-            .header {
-                padding-top: 80px;
-            }
-            
-            .bottom-nav {
-                padding-bottom: 50px;
-            }
         }
     </style>
 </head>
@@ -1138,16 +1129,13 @@
             appId: "1:508206162333:web:8fe26acd229aea1a93cf74"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Global variables
         window.payments = [];
         let isOnline = false;
 
-        // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DUL Accounts App Starting...');
             initializeFirebase();
@@ -1156,7 +1144,6 @@
 
         async function initializeFirebase() {
             try {
-                // Sign in anonymously for database access
                 await auth.signInAnonymously();
                 console.log('Firebase initialized successfully');
                 isOnline = true;
@@ -1172,7 +1159,6 @@
         }
 
         function setupRealtimeSync() {
-            // Listen for real-time updates
             db.collection('payments').doc('shared')
                 .onSnapshot((doc) => {
                     if (doc.exists) {
@@ -1209,8 +1195,11 @@
                 updateSyncStatus('offline');
             }
             
-            // Always save locally as backup
-            localStorage.setItem('dulPayments', JSON.stringify(window.payments));
+            try {
+                localStorage.setItem('dulPayments', JSON.stringify(window.payments));
+            } catch (e) {
+                console.error('LocalStorage save failed:', e);
+            }
         }
 
         async function loadPayments() {
@@ -1223,13 +1212,16 @@
                     const data = doc.data();
                     window.payments = data.payments || [];
                 } else {
-                    // Try to load from localStorage
-                    const localData = localStorage.getItem('dulPayments');
-                    window.payments = localData ? JSON.parse(localData) : [];
-                    
-                    // If we have local data, sync it to Firebase
-                    if (window.payments.length > 0) {
-                        await saveData();
+                    try {
+                        const localData = localStorage.getItem('dulPayments');
+                        window.payments = localData ? JSON.parse(localData) : [];
+                        
+                        if (window.payments.length > 0) {
+                            await saveData();
+                        }
+                    } catch (e) {
+                        console.error('LocalStorage load failed:', e);
+                        window.payments = [];
                     }
                 }
                 
@@ -1245,8 +1237,13 @@
         }
 
         function loadPaymentsOffline() {
-            const localData = localStorage.getItem('dulPayments');
-            window.payments = localData ? JSON.parse(localData) : [];
+            try {
+                const localData = localStorage.getItem('dulPayments');
+                window.payments = localData ? JSON.parse(localData) : [];
+            } catch (e) {
+                console.error('LocalStorage load failed:', e);
+                window.payments = [];
+            }
             updateStats();
             renderRecentPayments();
         }
@@ -1271,7 +1268,6 @@
             }
         }
 
-        // All the existing DUL Accounts functions
         window.handleCategoryChange = function() {
             const category = document.getElementById('paymentCategory').value;
             const typeGroup = document.getElementById('paymentTypeGroup');
@@ -1308,9 +1304,7 @@
                 return;
             }
             
-            const type = document.getElementById('paymentType').value;
             const methodGroup = document.getElementById('paymentMethodGroup');
-            
             methodGroup.style.display = 'block';
             document.getElementById('paymentMethod').setAttribute('required', 'required');
         };
@@ -1571,7 +1565,7 @@
             }
             
             const invoiceButton = payment.invoice ? 
-                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">🔍 Invoice</button>` : '';
+                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📄 Invoice</button>` : '';
             
             return `
                 <div class="payment-card">
