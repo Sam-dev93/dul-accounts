@@ -384,7 +384,7 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-top: 0.5px solid var(--border);
-            padding: 10px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);
+            padding: 10px 0 0 0;
             display: flex;
             justify-content: space-around;
             z-index: 1000;
@@ -402,7 +402,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 4px 12px;
+            padding: 4px 12px 0 12px;
             cursor: pointer;
             color: var(--text-secondary);
             transition: all 0.3s;
@@ -1124,250 +1124,214 @@
 
         // Global variables
         window.payments = [];
-        let isOnline = navigator.onLine;
         let unsubscribe = null;
         let syncTimeout = null;
-        let retryCount = 0;
-        const MAX_RETRIES = 3;
+        let authRetryCount = 0;
+        const MAX_AUTH_RETRIES = 5;
+        let currentUser = null;
 
-        // Enable offline persistence for Firestore
-        db.enablePersistence({ synchronizeTabs: true })
-            .catch((err) => {
-                if (err.code == 'failed-precondition') {
-                    console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-                } else if (err.code == 'unimplemented') {
-                    console.log('Current browser does not support offline persistence');
-                }
-            });
-
-        // Initialize app on DOM load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DUL Accounts App Starting...');
-            initializeApp();
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('App starting...');
+            
+            // Load local data first for immediate display
+            loadLocalData();
+            updateUI();
+            
+            // Setup file inputs
             setupFileInputs();
-            setupNetworkHandlers();
+            
+            // Initialize Firebase with better error handling
+            await initFirebase();
         });
 
-        async function initializeApp() {
+        async function initFirebase() {
             try {
-                // First load from localStorage for immediate display
-                loadPaymentsOffline();
-                
-                // Set auth persistence for PWA
+                // Enable offline persistence first
+                await db.enablePersistence({ synchronizeTabs: false })
+                    .catch(err => {
+                        if (err.code === 'unimplemented') {
+                            console.log('Offline persistence not supported in this browser');
+                        }
+                    });
+
+                // Set auth persistence
                 await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
                 
-                // Setup auth state listener
-                auth.onAuthStateChanged(async (user) => {
-                    if (user) {
-                        console.log('User authenticated:', user.uid);
-                        onAuthSuccess();
-                    } else {
-                        console.log('User not authenticated, signing in...');
-                        try {
-                            await auth.signInAnonymously();
-                        } catch (error) {
-                            console.error('Sign in error:', error);
-                            handleOfflineMode();
-                        }
-                    }
-                });
+                // Setup auth state observer
+                auth.onAuthStateChanged(handleAuthStateChange);
+                
+                // Try to sign in if not already authenticated
+                if (!auth.currentUser) {
+                    await signInUser();
+                }
             } catch (error) {
-                console.error('App initialization error:', error);
+                console.error('Firebase init error:', error);
                 handleOfflineMode();
             }
         }
 
-        function onAuthSuccess() {
-            isOnline = true;
-            retryCount = 0;
-            updateSyncStatus('syncing');
-            loadPayments();
-            setupRealtimeSync();
-        }
-
-        function handleOfflineMode() {
-            isOnline = false;
-            updateSyncStatus('offline');
-            
-            // Retry connection after delay
-            if (retryCount < MAX_RETRIES) {
-                retryCount++;
-                setTimeout(() => {
-                    console.log(`Retry attempt ${retryCount}/${MAX_RETRIES}`);
-                    if (navigator.onLine) {
-                        initializeApp();
-                    }
-                }, 5000 * retryCount);
+        async function signInUser() {
+            try {
+                const credential = await auth.signInAnonymously();
+                currentUser = credential.user;
+                console.log('Signed in successfully:', currentUser.uid);
+                authRetryCount = 0;
+            } catch (error) {
+                console.error('Sign in error:', error);
+                
+                if (authRetryCount < MAX_AUTH_RETRIES) {
+                    authRetryCount++;
+                    console.log(`Retrying auth... (${authRetryCount}/${MAX_AUTH_RETRIES})`);
+                    setTimeout(signInUser, 2000 * authRetryCount);
+                } else {
+                    handleOfflineMode();
+                }
             }
         }
 
-        function setupNetworkHandlers() {
-            // Listen for online/offline events
-            window.addEventListener('online', handleOnline);
-            window.addEventListener('offline', handleOffline);
-            
-            // Check connectivity periodically
-            setInterval(checkConnectivity, 10000);
-        }
-
-        async function handleOnline() {
-            console.log('Network online detected');
-            isOnline = true;
-            
-            if (!auth.currentUser) {
-                await initializeApp();
+        function handleAuthStateChange(user) {
+            if (user) {
+                currentUser = user;
+                console.log('Auth state: authenticated', user.uid);
+                updateSyncStatus('syncing');
+                setupRealtimeSync();
+                syncToFirebase();
             } else {
-                // Sync any pending changes
-                await saveData();
-                if (!unsubscribe) {
-                    setupRealtimeSync();
+                currentUser = null;
+                console.log('Auth state: not authenticated');
+                if (navigator.onLine) {
+                    signInUser();
+                } else {
+                    handleOfflineMode();
                 }
-            }
-        }
-
-        function handleOffline() {
-            console.log('Network offline detected');
-            isOnline = false;
-            updateSyncStatus('offline');
-            
-            // Clean up realtime listener
-            if (unsubscribe) {
-                unsubscribe();
-                unsubscribe = null;
-            }
-        }
-
-        async function checkConnectivity() {
-            if (!navigator.onLine) {
-                if (isOnline) {
-                    handleOffline();
-                }
-                return;
-            }
-            
-            // If we think we're offline but network is back
-            if (!isOnline && navigator.onLine) {
-                handleOnline();
             }
         }
 
         function setupRealtimeSync() {
-            // Clean up existing listener
+            // Clean up any existing listener
             if (unsubscribe) {
                 unsubscribe();
+                unsubscribe = null;
             }
             
-            unsubscribe = db.collection('payments').doc('shared')
+            // Setup realtime listener
+            unsubscribe = db.collection('payments')
+                .doc('shared')
                 .onSnapshot(
-                    { includeMetadataChanges: true },
+                    { includeMetadataChanges: false },
                     (doc) => {
-                        if (doc.exists) {
+                        if (doc.exists && !doc.metadata.fromCache) {
                             const data = doc.data();
-                            if (data.payments) {
+                            if (data && data.payments) {
                                 window.payments = data.payments;
-                                localStorage.setItem('dulPayments', JSON.stringify(window.payments));
+                                saveLocalData();
                                 updateUI();
-                                
-                                if (!doc.metadata.fromCache) {
-                                    updateSyncStatus('synced');
-                                }
+                                updateSyncStatus('synced');
                             }
                         }
                     },
                     (error) => {
-                        console.error('Realtime sync error:', error);
+                        console.error('Snapshot error:', error);
                         if (error.code === 'permission-denied') {
-                            // Try to re-authenticate
-                            initializeApp();
+                            signInUser();
                         } else {
-                            handleOffline();
+                            updateSyncStatus('offline');
                         }
                     }
                 );
         }
 
-        async function saveData() {
-            // Clear any existing timeout
+        async function syncToFirebase() {
+            if (!currentUser) {
+                console.log('No user, skipping sync');
+                return;
+            }
+            
+            try {
+                // Get remote data
+                const doc = await db.collection('payments').doc('shared').get();
+                
+                if (!doc.exists && window.payments.length > 0) {
+                    // No remote data, upload local
+                    await saveToFirebase();
+                } else if (doc.exists) {
+                    // Merge with remote data
+                    const remoteData = doc.data();
+                    if (remoteData && remoteData.payments) {
+                        // For now, just use remote data
+                        // In production, you'd implement proper conflict resolution
+                        window.payments = remoteData.payments;
+                        saveLocalData();
+                        updateUI();
+                    }
+                }
+                
+                updateSyncStatus('synced');
+            } catch (error) {
+                console.error('Sync error:', error);
+                updateSyncStatus('offline');
+            }
+        }
+
+        async function saveToFirebase() {
+            if (!currentUser) {
+                console.log('No user, data saved locally only');
+                return;
+            }
+            
+            // Clear existing timeout
             if (syncTimeout) {
                 clearTimeout(syncTimeout);
             }
             
             updateSyncStatus('syncing');
             
-            // Always save to localStorage first
+            // Debounce saves
+            syncTimeout = setTimeout(async () => {
+                try {
+                    await db.collection('payments').doc('shared').set({
+                        payments: window.payments,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                        userId: currentUser.uid
+                    });
+                    updateSyncStatus('synced');
+                } catch (error) {
+                    console.error('Save error:', error);
+                    updateSyncStatus('offline');
+                }
+            }, 1000);
+        }
+
+        function handleOfflineMode() {
+            console.log('Running in offline mode');
+            updateSyncStatus('offline');
+            
+            // Clean up listener
+            if (unsubscribe) {
+                unsubscribe();
+                unsubscribe = null;
+            }
+        }
+
+        function saveLocalData() {
             try {
                 localStorage.setItem('dulPayments', JSON.stringify(window.payments));
             } catch (e) {
-                console.error('LocalStorage save failed:', e);
-            }
-            
-            // Debounce Firebase saves
-            syncTimeout = setTimeout(async () => {
-                try {
-                    if (isOnline && auth.currentUser) {
-                        await db.collection('payments').doc('shared').set({
-                            payments: window.payments,
-                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                            userId: auth.currentUser.uid
-                        });
-                        updateSyncStatus('synced');
-                    } else {
-                        updateSyncStatus('offline');
-                    }
-                } catch (error) {
-                    console.error('Error saving to Firebase:', error);
-                    updateSyncStatus('offline');
-                    
-                    // Retry once after a delay
-                    if (isOnline && auth.currentUser) {
-                        setTimeout(saveData, 2000);
-                    }
-                }
-            }, 500);
-        }
-
-        async function loadPayments() {
-            updateSyncStatus('syncing');
-            
-            try {
-                const doc = await db.collection('payments').doc('shared').get();
-                
-                if (doc.exists) {
-                    const data = doc.data();
-                    window.payments = data.payments || [];
-                    
-                    // Update localStorage with server data
-                    localStorage.setItem('dulPayments', JSON.stringify(window.payments));
-                } else {
-                    // No server data, use local data
-                    const localData = localStorage.getItem('dulPayments');
-                    window.payments = localData ? JSON.parse(localData) : [];
-                    
-                    // Save local data to server
-                    if (window.payments.length > 0) {
-                        await saveData();
-                    }
-                }
-                
-                updateUI();
-                updateSyncStatus('synced');
-                
-            } catch (error) {
-                console.error('Error loading from Firebase:', error);
-                loadPaymentsOffline();
-                updateSyncStatus('offline');
+                console.error('Failed to save local data:', e);
             }
         }
 
-        function loadPaymentsOffline() {
+        function loadLocalData() {
             try {
-                const localData = localStorage.getItem('dulPayments');
-                window.payments = localData ? JSON.parse(localData) : [];
+                const data = localStorage.getItem('dulPayments');
+                if (data) {
+                    window.payments = JSON.parse(data);
+                }
             } catch (e) {
-                console.error('LocalStorage load failed:', e);
+                console.error('Failed to load local data:', e);
                 window.payments = [];
             }
-            updateUI();
         }
 
         function updateUI() {
@@ -1381,25 +1345,44 @@
 
         function updateSyncStatus(status) {
             const syncEl = document.getElementById('syncStatus');
+            if (!syncEl) return;
+            
             const dotEl = syncEl.querySelector('.sync-dot');
             const textEl = syncEl.querySelector('span');
             
             syncEl.className = `sync-status ${status}`;
-            dotEl.className = `sync-dot ${status}`;
+            if (dotEl) dotEl.className = `sync-dot ${status}`;
             
-            switch(status) {
-                case 'syncing':
-                    textEl.textContent = 'Syncing...';
-                    break;
-                case 'synced':
-                    textEl.textContent = 'Synced';
-                    break;
-                default:
-                    textEl.textContent = 'Offline';
+            if (textEl) {
+                switch(status) {
+                    case 'syncing':
+                        textEl.textContent = 'Syncing...';
+                        break;
+                    case 'synced':
+                        textEl.textContent = 'Synced';
+                        break;
+                    default:
+                        textEl.textContent = 'Offline';
+                }
             }
         }
 
-        // Form handlers
+        // Network monitoring
+        window.addEventListener('online', () => {
+            console.log('Network: online');
+            if (!currentUser) {
+                signInUser();
+            } else {
+                syncToFirebase();
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Network: offline');
+            handleOfflineMode();
+        });
+
+        // Form handlers and UI functions
         window.handleCategoryChange = function() {
             const category = document.getElementById('paymentCategory').value;
             const typeGroup = document.getElementById('paymentTypeGroup');
@@ -1431,17 +1414,13 @@
 
         window.handleTypeChange = function() {
             const category = document.getElementById('paymentCategory').value;
-            
-            if (category === 'Banking') {
-                return;
-            }
+            if (category === 'Banking') return;
             
             const methodGroup = document.getElementById('paymentMethodGroup');
             methodGroup.style.display = 'block';
             document.getElementById('paymentMethod').setAttribute('required', 'required');
         };
 
-        // Modal handlers
         window.showAddPayment = function() {
             const modal = document.getElementById('addPaymentModal');
             if (modal) {
@@ -1465,14 +1444,12 @@
             }
         };
 
-        // Click outside to close modals
         window.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal') || e.target.classList.contains('image-modal')) {
                 e.target.classList.remove('active');
             }
         });
 
-        // View switching
         window.switchView = function(view) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1480,14 +1457,12 @@
             document.getElementById(view + 'View').classList.add('active');
             event.currentTarget.classList.add('active');
             
-            // Re-render view content
             if (view === 'pending') renderPendingPayments();
             if (view === 'approved') renderApprovedPayments();
             if (view === 'cashControl') renderCashControl();
             if (view === 'sent') renderSentPayments();
         };
 
-        // Payment operations
         window.addPayment = function(event) {
             event.preventDefault();
             
@@ -1495,12 +1470,10 @@
             const uploadFile = document.getElementById('invoiceFileUpload').files[0];
             const invoiceFile = cameraFile || uploadFile;
             
-            let invoiceData = null;
-            
             if (invoiceFile) {
                 const reader = new FileReader();
                 reader.onloadend = function() {
-                    invoiceData = {
+                    const invoiceData = {
                         name: invoiceFile.name,
                         type: invoiceFile.type,
                         data: reader.result
@@ -1540,10 +1513,10 @@
             };
 
             window.payments.unshift(payment);
-            saveData();
+            saveLocalData();
+            saveToFirebase();
             closeModal('addPaymentModal');
             
-            // Reset form
             document.querySelector('#addPaymentModal form').reset();
             document.getElementById('invoiceFileName').textContent = '';
             document.getElementById('invoicePreview').classList.remove('active');
@@ -1559,7 +1532,8 @@
                 } else {
                     payment.status = 'approved';
                 }
-                saveData();
+                saveLocalData();
+                saveToFirebase();
                 updateUI();
             }
         };
@@ -1578,7 +1552,8 @@
                 
                 payment.status = 'sent';
                 payment.sentAt = new Date().toISOString();
-                saveData();
+                saveLocalData();
+                saveToFirebase();
                 updateUI();
             }
         };
@@ -1587,7 +1562,8 @@
             if (!confirm('Delete this payment?')) return;
             
             window.payments = window.payments.filter(p => p.id !== id);
-            saveData();
+            saveLocalData();
+            saveToFirebase();
             updateUI();
         };
 
@@ -1614,7 +1590,6 @@
             }
         };
 
-        // Calculations
         function calculateCashPot() {
             const cashIn = window.payments
                 .filter(p => p.type === 'income' && p.paymentMethod === 'cash' && p.status === 'in-pot')
@@ -1630,7 +1605,6 @@
         function updateStats() {
             const pending = window.payments.filter(p => p.status === 'pending').length;
             const approved = window.payments.filter(p => p.status === 'approved').length;
-            
             const cashPot = calculateCashPot();
             
             const currentMonth = new Date().toISOString().slice(0, 7);
@@ -1646,7 +1620,6 @@
             document.getElementById('cashPotDetail').textContent = '£' + cashPot.toFixed(2);
             document.getElementById('monthExpense').textContent = '£' + expense.toFixed(2);
             
-            // Update badges
             const pendingBadge = document.getElementById('pendingBadge');
             const approvedBadge = document.getElementById('approvedBadge');
             
@@ -1665,7 +1638,6 @@
             }
         }
 
-        // Render functions
         function renderPaymentCard(payment) {
             const statusClass = `status-${payment.status}`;
             let statusText = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
