@@ -1,1112 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#10A37F">
-    <title>DUL Accounts</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        :root {
-            --primary: #10A37F;
-            --primary-dark: #0D7A5F;
-            --primary-light: #D1FAE5;
-            --success: #34C759;
-            --warning: #FF9500;
-            --danger: #FF3B30;
-            --background: #000000;
-            --card-bg: #1C1C1E;
-            --card-bg-elevated: #2C2C2E;
-            --text-primary: #FFFFFF;
-            --text-secondary: #98989D;
-            --border: #38383A;
-            --shadow: rgba(0, 0, 0, 0.3);
-        }
-
-        @media (prefers-color-scheme: light) {
-            :root {
-                --background: #F2F2F7;
-                --card-bg: #FFFFFF;
-                --card-bg-elevated: #FFFFFF;
-                --text-primary: #000000;
-                --text-secondary: #8E8E93;
-                --border: #E5E5EA;
-                --shadow: rgba(0, 0, 0, 0.08);
-            }
-        }
-
-        html {
-            height: 100vh;
-            height: -webkit-fill-available;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-            background: var(--background);
-            color: var(--text-primary);
-            height: 100vh;
-            height: -webkit-fill-available;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            height: -webkit-fill-available;
-            position: relative;
-        }
-
-        .header {
-            background: var(--card-bg);
-            padding: calc(env(safe-area-inset-top, 0px) + 16px) 24px 24px;
-            position: relative;
-            z-index: 100;
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            background: rgba(28, 28, 30, 0.72);
-            border-bottom: 0.5px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        @media (prefers-color-scheme: light) {
-            .header {
-                background: rgba(242, 242, 247, 0.8);
-            }
-        }
-
-        .header-content {
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .header h1 {
-            font-size: 38px;
-            font-weight: 700;
-            letter-spacing: -1px;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header .subtitle {
-            font-size: 17px;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .view-content {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 75px);
-            min-height: 0;
-        }
-
-        .fab {
-            position: fixed;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 75px);
-            right: 24px;
-            width: 60px;
-            height: 60px;
-            border-radius: 30px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            box-shadow: 0 8px 24px rgba(16, 163, 127, 0.4);
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-            transition: transform 0.2s;
-        }
-
-        .fab:active {
-            transform: scale(0.92);
-        }
-
-        .fab svg {
-            width: 28px;
-            height: 28px;
-            stroke: white;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-            padding: 20px 24px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-bg-elevated) 100%);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 4px 16px var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .stat-card .label {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-card .value {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: -1px;
-        }
-
-        .stat-card.pending .value { color: var(--warning); }
-        .stat-card.approved .value { color: var(--primary); }
-        .stat-card.cash .value { color: var(--success); }
-        .stat-card.expense .value { color: var(--danger); }
-
-        .container {
-            padding: 0 24px 24px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 24px 0 16px;
-        }
-
-        .section-header h2 {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .payment-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .payment-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 14px;
-            box-shadow: 0 1px 6px var(--shadow);
-            border: 1px solid var(--border);
-            transition: transform 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .payment-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
-        }
-
-        .payment-card:active {
-            transform: scale(0.98);
-        }
-
-        .payment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .payment-title {
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: -0.2px;
-        }
-
-        .payment-category {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .payment-amount {
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-        }
-
-        .payment-meta {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-
-        .payment-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .payment-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 9px;
-            border: none;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .btn:active {
-            transform: scale(0.96);
-        }
-
-        .btn-approve {
-            background: linear-gradient(135deg, var(--success) 0%, #28A745 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
-        }
-
-        .btn-send {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
-        }
-
-        .btn-delete {
-            background: linear-gradient(135deg, var(--danger) 0%, #DC3545 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
-        }
-
-        .btn-secondary {
-            background: var(--card-bg-elevated);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-view {
-            width: 100%;
-            padding: 8px;
-            background: var(--card-bg-elevated);
-            border: 1px solid var(--border);
-            color: var(--primary);
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            gap: 4px;
-        }
-
-        .status-pending {
-            background: rgba(255, 149, 0, 0.2);
-            color: var(--warning);
-            border: 1px solid rgba(255, 149, 0, 0.3);
-        }
-
-        .status-approved {
-            background: var(--primary-light);
-            color: var(--primary-dark);
-            border: 1px solid rgba(16, 163, 127, 0.3);
-        }
-
-        .status-sent {
-            background: rgba(52, 199, 89, 0.2);
-            color: var(--success);
-            border: 1px solid rgba(52, 199, 89, 0.3);
-        }
-
-        .status-in-pot {
-            background: rgba(52, 199, 89, 0.2);
-            color: var(--success);
-            border: 1px solid rgba(52, 199, 89, 0.3);
-        }
-
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(28, 28, 30, 0.95);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-top: 0.5px solid var(--border);
-            padding: 10px 0 0 0;
-            display: flex;
-            justify-content: space-around;
-            z-index: 1000;
-            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
-        }
-
-        @media (prefers-color-scheme: light) {
-            .bottom-nav {
-                background: rgba(242, 242, 247, 0.95);
-            }
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 4px 12px 0 12px;
-            cursor: pointer;
-            color: var(--text-secondary);
-            transition: all 0.3s;
-            flex: 1;
-            max-width: 80px;
-            position: relative;
-        }
-
-        .nav-item.active {
-            color: var(--primary);
-        }
-
-        .nav-item .icon {
-            width: 24px;
-            height: 24px;
-            margin-bottom: 2px;
-            transition: transform 0.2s;
-        }
-
-        .nav-item.active .icon {
-            transform: scale(1.1);
-        }
-
-        .nav-item .label {
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .nav-item .badge {
-            position: absolute;
-            top: 0;
-            right: 50%;
-            margin-right: -18px;
-            background: linear-gradient(135deg, var(--danger) 0%, #DC3545 100%);
-            color: white;
-            font-size: 9px;
-            font-weight: 700;
-            padding: 2px 5px;
-            border-radius: 10px;
-            min-width: 16px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            animation: fadeIn 0.3s;
-            align-items: flex-end;
-        }
-
-        .modal.active {
-            display: flex !important;
-        }
-
-        .modal-content {
-            background: var(--card-bg);
-            border-radius: 24px 24px 0 0;
-            padding: 32px 24px calc(env(safe-area-inset-bottom, 0px) + 32px);
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 28px;
-        }
-
-        .modal-header h2 {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: -0.8px;
-        }
-
-        .close-btn {
-            background: var(--card-bg-elevated);
-            border: 1px solid var(--border);
-            width: 36px;
-            height: 36px;
-            border-radius: 18px;
-            font-size: 24px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            transition: all 0.2s;
-        }
-
-        .close-btn:active {
-            transform: scale(0.9);
-        }
-
-        .form-group {
-            margin-bottom: 24px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-input, .form-select, .form-textarea {
-            width: 100%;
-            padding: 16px 18px;
-            background: var(--card-bg-elevated);
-            border: 1.5px solid var(--border);
-            border-radius: 14px;
-            font-size: 17px;
-            font-family: inherit;
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-
-        .form-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: var(--card-bg);
-            box-shadow: 0 0 0 4px rgba(16, 163, 127, 0.1);
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 12px;
-            box-shadow: 0 4px 16px rgba(16, 163, 127, 0.3);
-            transition: all 0.2s;
-        }
-
-        .btn-submit:active {
-            transform: scale(0.98);
-        }
-
-        .file-upload-label {
-            display: block;
-            padding: 32px;
-            background: var(--card-bg-elevated);
-            border: 2px dashed var(--border);
-            border-radius: 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .file-upload-label:hover {
-            border-color: var(--primary);
-            background: rgba(16, 163, 127, 0.05);
-        }
-
-        .file-upload input {
-            display: none;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 80px 20px;
-        }
-
-        .empty-state .icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-            opacity: 0.4;
-        }
-
-        .empty-state .title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            letter-spacing: -0.5px;
-        }
-
-        .empty-state .subtitle {
-            font-size: 16px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .view {
-            display: none !important;
-            flex: 1;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .view.active {
-            display: flex !important;
-        }
-
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 3000;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            color: white;
-            font-size: 18px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .loading-subtext {
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        .invoice-preview {
-            display: none;
-            margin-top: 16px;
-            padding: 20px;
-            background: var(--card-bg-elevated);
-            border-radius: 16px;
-            border: 2px solid var(--primary);
-        }
-
-        .invoice-preview.active {
-            display: block;
-        }
-
-        .preview-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .preview-image {
-            width: 100%;
-            max-height: 300px;
-            object-fit: contain;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            background: var(--background);
-        }
-
-        .extracted-data {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .extracted-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: var(--card-bg);
-            border-radius: 10px;
-        }
-
-        .extracted-label {
-            font-size: 13px;
-            color: var(--text-secondary);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .extracted-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .image-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 3500;
-            animation: fadeIn 0.3s;
-            align-items: center;
-            justify-content: center;
-            padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
-        }
-
-        .image-modal.active {
-            display: flex !important;
-        }
-
-        .image-modal-content {
-            position: relative;
-            max-width: 90vw;
-            max-height: 85vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .image-modal img {
-            max-width: 100%;
-            max-height: 70vh;
-            object-fit: contain;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        }
-
-        .image-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            margin-bottom: 20px;
-            color: white;
-        }
-
-        .image-modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: white;
-        }
-
-        .image-modal-close {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            width: 44px;
-            height: 44px;
-            border-radius: 22px;
-            font-size: 24px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            transition: all 0.2s;
-        }
-
-        .image-modal-close:active {
-            transform: scale(0.9);
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .sync-status {
-            position: fixed;
-            top: calc(env(safe-area-inset-top, 0px) + 12px);
-            right: 20px;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 6px 12px;
-            font-size: 11px;
-            font-weight: 600;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .sync-status.syncing {
-            color: var(--warning);
-        }
-
-        .sync-status.synced {
-            color: var(--success);
-        }
-
-        .sync-status.offline {
-            color: var(--text-secondary);
-        }
-
-        .sync-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        .sync-dot.syncing {
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-    </style>
-</head>
-<body>
-    <div class="app-container">
-        <div id="syncStatus" class="sync-status offline">
-            <div class="sync-dot"></div>
-            <span>Offline</span>
-        </div>
-
-        <div id="dashboardView" class="view active">
-            <div class="header">
-                <div class="header-content">
-                    <h1>DUL Accounts</h1>
-                    <div class="subtitle">Group Management</div>
-                </div>
-            </div>
-
-            <div class="view-content">
-                <div class="stats-grid">
-                    <div class="stat-card pending">
-                        <div class="label">Pending</div>
-                        <div class="value" id="pendingCount">0</div>
-                    </div>
-                    <div class="stat-card approved">
-                        <div class="label">Approved</div>
-                        <div class="value" id="approvedCount">0</div>
-                    </div>
-                    <div class="stat-card cash">
-                        <div class="label">Cash Pot</div>
-                        <div class="value" id="cashPot">£0</div>
-                    </div>
-                    <div class="stat-card expense">
-                        <div class="label">Month Out</div>
-                        <div class="value" id="monthExpense">£0</div>
-                    </div>
-                </div>
-
-                <div class="container">
-                    <div class="section-header">
-                        <h2>Recent Activity</h2>
-                    </div>
-                    <div id="recentPayments" class="payment-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="pendingView" class="view">
-            <div class="header">
-                <div class="header-content">
-                    <h1>Pending</h1>
-                    <div class="subtitle">Awaiting approval</div>
-                </div>
-            </div>
-            <div class="view-content">
-                <div class="container">
-                    <div id="pendingPayments" class="payment-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="approvedView" class="view">
-            <div class="header">
-                <div class="header-content">
-                    <h1>Approved</h1>
-                    <div class="subtitle">Ready to send</div>
-                </div>
-            </div>
-            <div class="view-content">
-                <div class="container">
-                    <div id="approvedPayments" class="payment-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="cashControlView" class="view">
-            <div class="header">
-                <div class="header-content">
-                    <h1>Cash Control</h1>
-                    <div class="subtitle">Cash pot management</div>
-                </div>
-            </div>
-            <div class="view-content">
-                <div class="container">
-                    <div class="section-header">
-                        <h2>Available Cash</h2>
-                    </div>
-                    <div class="stat-card cash" style="margin-bottom: 24px;">
-                        <div class="label">Current Cash Pot</div>
-                        <div class="value" id="cashPotDetail">£0</div>
-                    </div>
-
-                    <div class="section-header">
-                        <h2>Cash History</h2>
-                    </div>
-                    <div id="cashPayments" class="payment-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="sentView" class="view">
-            <div class="header">
-                <div class="header-content">
-                    <h1>Sent</h1>
-                    <div class="subtitle">Completed payments</div>
-                </div>
-            </div>
-            <div class="view-content">
-                <div class="container">
-                    <div id="sentPayments" class="payment-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <button class="fab" onclick="window.showAddPayment()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        </button>
-
-        <div id="addPaymentModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Add Payment</h2>
-                    <button class="close-btn" onclick="closeModal('addPaymentModal')">×</button>
-                </div>
-                <form onsubmit="addPayment(event)">
-                    <div class="form-group">
-                        <label class="form-label">Invoice / Receipt</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
-                            <label class="file-upload-label" style="margin: 0; padding: 20px;">
-                                <div style="font-size: 32px; margin-bottom: 8px;">📸</div>
-                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Take Photo</div>
-                                <div style="font-size: 11px; color: var(--text-secondary);">AI Extract</div>
-                                <input type="file" id="invoiceFileCamera" accept="image/*" capture="environment" style="display: none;">
-                            </label>
-                            <label class="file-upload-label" style="margin: 0; padding: 20px;">
-                                <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
-                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Upload File</div>
-                                <div style="font-size: 11px; color: var(--text-secondary);">Image/PDF</div>
-                                <input type="file" id="invoiceFileUpload" accept="image/*,.pdf" style="display: none;">
-                            </label>
-                        </div>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;" id="invoiceFileName"></div>
-                        <div class="invoice-preview" id="invoicePreview">
-                            <div class="preview-title">
-                                <span>📄</span> Extracted Data
-                            </div>
-                            <img id="previewImage" class="preview-image" alt="Invoice preview">
-                            <div class="extracted-data" id="extractedData"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <input type="text" class="form-input" id="paymentDesc" placeholder="Enter description or upload invoice" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Amount (£)</label>
-                        <input type="number" step="0.01" class="form-input" id="paymentAmount" placeholder="0.00" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Category</label>
-                        <select class="form-select" id="paymentCategory" required onchange="handleCategoryChange()">
-                            <option value="">Select category</option>
-                            <option value="Staff Invoice">Staff Invoice</option>
-                            <option value="Services">Services</option>
-                            <option value="Utility Bill">Utility Bill</option>
-                            <option value="Supplies">Supplies</option>
-                            <option value="Donation">Donation</option>
-                            <option value="Banking">Banking</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="paymentTypeGroup">
-                        <label class="form-label">Type</label>
-                        <select class="form-select" id="paymentType" required onchange="handleTypeChange()">
-                            <option value="expense">Expense (Out)</option>
-                            <option value="income">Income (In)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="paymentMethodGroup">
-                        <label class="form-label">Payment Method</label>
-                        <select class="form-select" id="paymentMethod" required>
-                            <option value="bank">Bank Transfer</option>
-                            <option value="cash">Cash</option>
-                            <option value="cheque">Cheque</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Notes (Optional)</label>
-                        <textarea class="form-input form-textarea" id="paymentNotes" placeholder="Add any additional notes..."></textarea>
-                    </div>
-                    <button type="submit" class="btn-submit">Add Payment</button>
-                </form>
-            </div>
-        </div>
-
-        <div id="imageModal" class="image-modal">
-            <div class="image-modal-content">
-                <div class="image-modal-header">
-                    <div class="image-modal-title" id="imageModalTitle">Invoice</div>
-                    <button class="image-modal-close" onclick="closeImageModal()">×</button>
-                </div>
-                <img id="modalImage" alt="Invoice">
-            </div>
-        </div>
-
-        <div class="bottom-nav">
-            <div class="nav-item active" onclick="switchView('dashboard')">
-                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                    <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                    <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                    <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                </svg>
-                <div class="label">Home</div>
-            </div>
-            <div class="nav-item" onclick="switchView('pending')">
-                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                <div class="label">Pending</div>
-                <span class="badge" id="pendingBadge" style="display: none;">0</span>
-            </div>
-            <div class="nav-item" onclick="switchView('approved')">
-                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <div class="label">Approved</div>
-                <span class="badge" id="approvedBadge" style="display: none;">0</span>
-            </div>
-            <div class="nav-item" onclick="switchView('sent')">
-                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="22 2 11 13"></polyline>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-                <div class="label">Sent</div>
-            </div>
-            <div class="nav-item" onclick="switchView('cashControl')">
-                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                    <line x1="1" y1="10" x2="23" y2="10"></line>
-                </svg>
-                <div class="label">Cash</div>
-            </div>
-        </div>
-
-        <div id="loadingOverlay" class="loading-overlay">
-            <div class="spinner"></div>
-            <div class="loading-text">Scanning Invoice...</div>
-            <div class="loading-subtext">Extracting data from image</div>
-        </div>
-    </div>
-
-    <script>
+<script>
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCz5GKCJfazH9e-4z4X5QNd4o9BZV8gMoU",
@@ -1121,6 +13,9 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        // Telegraph API endpoint
+        const TELEGRAPH_UPLOAD_URL = 'https://telegra.ph/upload';
 
         // Global variables
         window.payments = [];
@@ -1529,6 +424,37 @@
             });
         }
 
+        // UPLOAD IMAGE TO TELEGRAPH
+        async function uploadImageToTelegraph(file) {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                console.log('Uploading to Telegraph...');
+                const response = await fetch(TELEGRAPH_UPLOAD_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Telegraph upload failed: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data && data[0] && data[0].src) {
+                    const imageUrl = 'https://telegra.ph' + data[0].src;
+                    console.log('Image uploaded to Telegraph:', imageUrl);
+                    return imageUrl;
+                } else {
+                    throw new Error('Invalid response from Telegraph');
+                }
+            } catch (error) {
+                console.error('Telegraph upload error:', error);
+                throw error;
+            }
+        }
+
         // Form handlers
         window.handleCategoryChange = function() {
             const category = document.getElementById('paymentCategory').value;
@@ -1618,44 +544,63 @@
             let invoiceFile = cameraFile || uploadFile;
             
             if (invoiceFile) {
-                // Compress image before saving
                 if (invoiceFile.type.startsWith('image/')) {
                     try {
                         const loadingOverlay = document.getElementById('loadingOverlay');
                         const loadingText = loadingOverlay.querySelector('.loading-text');
                         const loadingSubtext = loadingOverlay.querySelector('.loading-subtext');
                         
+                        // Compress image
                         loadingOverlay.classList.add('active');
                         loadingText.textContent = 'Compressing Image...';
                         loadingSubtext.textContent = 'Optimizing for upload';
                         
                         invoiceFile = await compressImage(invoiceFile);
                         
+                        // Upload to Telegraph
+                        loadingText.textContent = 'Uploading Image...';
+                        loadingSubtext.textContent = 'Uploading to cloud';
+                        
+                        const imageUrl = await uploadImageToTelegraph(invoiceFile);
+                        
                         loadingOverlay.classList.remove('active');
                         loadingText.textContent = 'Scanning Invoice...';
                         loadingSubtext.textContent = 'Extracting data from image';
+                        
+                        const invoiceData = {
+                            name: invoiceFile.name,
+                            type: invoiceFile.type,
+                            url: imageUrl,
+                            uploadedAt: new Date().toISOString()
+                        };
+                        
+                        savePaymentWithInvoice(invoiceData, Date.now().toString());
+                        
                     } catch (error) {
-                        console.error('Compression error:', error);
-                        alert('Could not compress image, using original');
+                        console.error('Image processing error:', error);
+                        const loadingOverlay = document.getElementById('loadingOverlay');
+                        loadingOverlay.classList.remove('active');
+                        alert('Failed to upload image. Please check your internet connection and try again.');
                     }
-                }
-                
-                const reader = new FileReader();
-                reader.onloadend = function() {
-                    const invoiceData = {
-                        name: invoiceFile.name,
-                        type: invoiceFile.type,
-                        data: reader.result
+                } else if (invoiceFile.type === 'application/pdf') {
+                    // For PDFs, store as base64 (they're usually smaller)
+                    const reader = new FileReader();
+                    reader.onloadend = function() {
+                        const invoiceData = {
+                            name: invoiceFile.name,
+                            type: invoiceFile.type,
+                            data: reader.result
+                        };
+                        savePaymentWithInvoice(invoiceData, Date.now().toString());
                     };
-                    savePayment(invoiceData);
-                };
-                reader.readAsDataURL(invoiceFile);
+                    reader.readAsDataURL(invoiceFile);
+                }
             } else {
-                savePayment(null);
+                savePaymentWithInvoice(null, Date.now().toString());
             }
         };
 
-        function savePayment(invoiceData) {
+        function savePaymentWithInvoice(invoiceData, paymentId) {
             const category = document.getElementById('paymentCategory').value;
             let type, paymentMethod;
             
@@ -1668,7 +613,7 @@
             }
             
             const payment = {
-                id: Date.now().toString(),
+                id: paymentId,
                 description: document.getElementById('paymentDesc').value,
                 amount: parseFloat(document.getElementById('paymentAmount').value),
                 category: category,
@@ -1769,17 +714,24 @@
             const modalTitle = document.getElementById('imageModalTitle');
             
             if (payment.invoice.type.includes('pdf')) {
+                const pdfData = payment.invoice.data;
                 const win = window.open('', '_blank');
                 win.document.write(`
-                    <iframe src="${payment.invoice.data}" 
+                    <iframe src="${pdfData}" 
                             style="width:100%; height:100vh; border:none;" 
                             title="${payment.invoice.name}">
                     </iframe>
                 `);
             } else {
-                modalImage.src = payment.invoice.data;
-                modalTitle.textContent = payment.invoice.name || 'Invoice';
-                modal.classList.add('active');
+                // Use URL from Telegraph or fallback to base64 data
+                const imageSource = payment.invoice.url || payment.invoice.data;
+                if (imageSource) {
+                    modalImage.src = imageSource;
+                    modalTitle.textContent = payment.invoice.name || 'Invoice';
+                    modal.classList.add('active');
+                } else {
+                    alert('Invoice image not found.');
+                }
             }
         };
 
