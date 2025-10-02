@@ -1109,21 +1109,19 @@
     <script>
         // Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCz5GKCJfazH9e-4z4X5QNd4o9BZV8gMoU",
-            authDomain: "dul-accounts.firebaseapp.com",
-            projectId: "dul-accounts",
-            storageBucket: "dul-accounts.firebasestorage.app",
-            messagingSenderId: "508206162333",
-            appId: "1:508206162333:web:8fe26acd229aea1a93cf74"
+            apiKey: "AIzaSyC-AM7-3HdvjRpJMDVQLfxUsZmgh1aA8UU",
+            authDomain: "dul-accounts-21118.firebaseapp.com",
+            projectId: "dul-accounts-21118",
+            storageBucket: "dul-accounts-21118.firebasestorage.app",
+            messagingSenderId: "484339552499",
+            appId: "1:484339552499:web:1dff66886e1627a178a786"
         };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-
-        // Telegraph API endpoint
-        const TELEGRAPH_UPLOAD_URL = 'https://telegra.ph/upload';
+        const storage = firebase.storage();
 
         // Global variables
         window.payments = [];
@@ -1532,48 +1530,46 @@
             });
         }
 
-        // UPLOAD IMAGE TO TELEGRAPH WITH FALLBACK
-        async function uploadImageToTelegraph(file) {
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                console.log('Uploading to Telegraph...');
-                const response = await fetch(TELEGRAPH_UPLOAD_URL, {
-                    method: 'POST',
-                    body: formData,
-                    mode: 'cors'
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Telegraph upload failed: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data && data[0] && data[0].src) {
-                    const imageUrl = 'https://telegra.ph' + data[0].src;
-                    console.log('Image uploaded to Telegraph:', imageUrl);
-                    return imageUrl;
-                } else {
-                    throw new Error('Invalid response from Telegraph');
-                }
-            } catch (error) {
-                console.error('Telegraph upload error:', error);
-                console.log('Falling back to base64 storage');
-                // Fallback to base64 if Telegraph fails
-                return null;
+        // UPLOAD IMAGE TO FIREBASE STORAGE
+        async function uploadImageToFirebaseStorage(file, paymentId) {
+            if (!currentUser) {
+                console.error('No user authenticated for upload');
+                throw new Error('User not authenticated');
             }
-        }
 
-        // Convert file to base64
-        async function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
+            try {
+                const storageRef = storage.ref();
+                const imageRef = storageRef.child(`invoices/${currentUser.uid}/${paymentId}_${Date.now()}.jpg`);
+                
+                console.log('Uploading to Firebase Storage...');
+                
+                const uploadTask = imageRef.put(file);
+                
+                // Monitor upload progress
+                uploadTask.on('state_changed', 
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        console.log('Upload progress: ' + progress + '%');
+                        const subtext = document.querySelector('.loading-subtext');
+                        if (subtext) {
+                            subtext.textContent = `Uploading... ${Math.round(progress)}%`;
+                        }
+                    },
+                    (error) => {
+                        console.error('Upload error:', error);
+                        throw error;
+                    }
+                );
+                
+                await uploadTask;
+                const downloadURL = await imageRef.getDownloadURL();
+                
+                console.log('Image uploaded successfully:', downloadURL);
+                return downloadURL;
+            } catch (error) {
+                console.error('Firebase Storage upload error:', error);
+                throw error;
+            }
         }
 
         // Form handlers
@@ -1671,56 +1667,39 @@
                         const loadingText = loadingOverlay.querySelector('.loading-text');
                         const loadingSubtext = loadingOverlay.querySelector('.loading-subtext');
                         
-                        // Compress image
                         loadingOverlay.classList.add('active');
                         loadingText.textContent = 'Compressing Image...';
                         loadingSubtext.textContent = 'Optimizing for upload';
                         
-                        invoiceFile = await compressImage(invoiceFile, 800, 0.6); // Smaller size for better compatibility
+                        invoiceFile = await compressImage(invoiceFile, 1200, 0.7);
                         
-                        // Try to upload to Telegraph
+                        const paymentId = Date.now().toString();
+                        
                         loadingText.textContent = 'Uploading Image...';
-                        loadingSubtext.textContent = 'Uploading to cloud';
+                        loadingSubtext.textContent = 'Uploading to Firebase Storage';
                         
-                        let imageUrl = await uploadImageToTelegraph(invoiceFile);
-                        let invoiceData;
-                        
-                        if (imageUrl) {
-                            // Telegraph upload successful
-                            invoiceData = {
-                                name: invoiceFile.name,
-                                type: invoiceFile.type,
-                                url: imageUrl,
-                                uploadedAt: new Date().toISOString()
-                            };
-                        } else {
-                            // Telegraph failed, use base64 fallback
-                            loadingText.textContent = 'Saving Image...';
-                            loadingSubtext.textContent = 'Using local storage';
-                            
-                            const base64Data = await fileToBase64(invoiceFile);
-                            invoiceData = {
-                                name: invoiceFile.name,
-                                type: invoiceFile.type,
-                                data: base64Data,
-                                uploadedAt: new Date().toISOString()
-                            };
-                        }
+                        const imageUrl = await uploadImageToFirebaseStorage(invoiceFile, paymentId);
                         
                         loadingOverlay.classList.remove('active');
                         loadingText.textContent = 'Scanning Invoice...';
                         loadingSubtext.textContent = 'Extracting data from image';
                         
-                        savePaymentWithInvoice(invoiceData, Date.now().toString());
+                        const invoiceData = {
+                            name: invoiceFile.name,
+                            type: invoiceFile.type,
+                            url: imageUrl,
+                            uploadedAt: new Date().toISOString()
+                        };
+                        
+                        savePaymentWithInvoice(invoiceData, paymentId);
                         
                     } catch (error) {
                         console.error('Image processing error:', error);
                         const loadingOverlay = document.getElementById('loadingOverlay');
                         loadingOverlay.classList.remove('active');
-                        alert('Failed to process image. Please try again.');
+                        alert('Failed to upload image. Please check your internet connection and try again.');
                     }
                 } else if (invoiceFile.type === 'application/pdf') {
-                    // For PDFs, store as base64
                     const reader = new FileReader();
                     reader.onloadend = function() {
                         const invoiceData = {
