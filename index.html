@@ -9,6 +9,12 @@
     <title>DUL Accounts</title>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
         * {
@@ -46,28 +52,39 @@
             }
         }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            position: fixed;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
             background: var(--background);
             color: var(--text-primary);
-            padding-top: env(safe-area-inset-top);
-            min-height: 100vh;
-            overflow-x: hidden;
+        }
+
+        .app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
         .header {
             background: var(--card-bg);
             padding: 20px 24px 24px;
-            padding-top: max(env(safe-area-inset-top), 20px);
-            position: fixed;
+            padding-top: max(env(safe-area-inset-top, 20px), 20px);
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
             z-index: 100;
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             background: rgba(28, 28, 30, 0.72);
             border-bottom: 0.5px solid var(--border);
+            flex-shrink: 0;
         }
 
         @media (prefers-color-scheme: light) {
@@ -99,9 +116,10 @@
         }
 
         .view-content {
-            padding-top: 120px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             padding-bottom: calc(90px + env(safe-area-inset-bottom));
-            min-height: 100vh;
         }
 
         .fab {
@@ -166,7 +184,7 @@
 
         .stat-card.pending .value { color: var(--warning); }
         .stat-card.approved .value { color: var(--primary); }
-        .stat-card.income .value { color: var(--success); }
+        .stat-card.cash .value { color: var(--success); }
         .stat-card.expense .value { color: var(--danger); }
 
         .container {
@@ -350,6 +368,12 @@
             border: 1px solid rgba(52, 199, 89, 0.3);
         }
 
+        .status-in-pot {
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(52, 199, 89, 0.3);
+        }
+
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -365,6 +389,7 @@
             padding-top: 12px;
             z-index: 1000;
             box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
         }
 
         @media (prefers-color-scheme: light) {
@@ -612,54 +637,6 @@
 
         .view.active {
             display: block !important;
-            animation: fadeIn 0.3s;
-        }
-
-        .report-card {
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 16px var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .report-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 16px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 16px;
-        }
-
-        .report-row:last-child {
-            border-bottom: none;
-            font-weight: 700;
-            font-size: 20px;
-            padding-top: 20px;
-        }
-
-        .statement-card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 12px var(--shadow);
-            border: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .statement-info .name {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .statement-info .date {
-            font-size: 14px;
-            color: var(--text-secondary);
         }
 
         .loading-overlay {
@@ -766,305 +743,575 @@
             font-weight: 600;
             color: var(--primary);
         }
+
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 3500;
+            animation: fadeIn 0.3s;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .image-modal.active {
+            display: flex !important;
+        }
+
+        .image-modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .image-modal img {
+            max-width: 100%;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .image-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .image-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .image-modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .image-modal-close:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sync-status.syncing {
+            color: var(--warning);
+        }
+
+        .sync-status.synced {
+            color: var(--success);
+        }
+
+        .sync-status.offline {
+            color: var(--text-secondary);
+        }
+
+        .sync-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .sync-dot.syncing {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
     </style>
 </head>
 <body>
-
-    <div id="dashboardView" class="view active">
-        <div class="header">
-            <div class="header-content">
-                <h1>DUL Accounts</h1>
-                <div class="subtitle">Group Management</div>
-            </div>
+    <div class="app-container">
+        <!-- Sync Status -->
+        <div id="syncStatus" class="sync-status offline">
+            <div class="sync-dot"></div>
+            <span>Offline</span>
         </div>
 
-        <div class="view-content">
-            <div class="stats-grid">
-                <div class="stat-card pending">
-                    <div class="label">Pending</div>
-                    <div class="value" id="pendingCount">0</div>
-                </div>
-                <div class="stat-card approved">
-                    <div class="label">Approved</div>
-                    <div class="value" id="approvedCount">0</div>
-                </div>
-                <div class="stat-card income">
-                    <div class="label">Month In</div>
-                    <div class="value" id="monthIncome">£0</div>
-                </div>
-                <div class="stat-card expense">
-                    <div class="label">Month Out</div>
-                    <div class="value" id="monthExpense">£0</div>
+        <div id="dashboardView" class="view active">
+            <div class="header">
+                <div class="header-content">
+                    <h1>DUL Accounts</h1>
+                    <div class="subtitle">Group Management</div>
                 </div>
             </div>
 
-            <div class="container">
-                <div class="section-header">
-                    <h2>Recent Activity</h2>
-                </div>
-                <div id="recentPayments" class="payment-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="pendingView" class="view">
-        <div class="header">
-            <div class="header-content">
-                <h1>Pending</h1>
-                <div class="subtitle">Awaiting approval</div>
-            </div>
-        </div>
-        <div class="view-content">
-            <div class="container">
-                <div id="pendingPayments" class="payment-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="approvedView" class="view">
-        <div class="header">
-            <div class="header-content">
-                <h1>Approved</h1>
-                <div class="subtitle">Ready to send</div>
-            </div>
-        </div>
-        <div class="view-content">
-            <div class="container">
-                <div id="approvedPayments" class="payment-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="sentView" class="view">
-        <div class="header">
-            <div class="header-content">
-                <h1>Sent</h1>
-                <div class="subtitle">Completed payments</div>
-            </div>
-        </div>
-        <div class="view-content">
-            <div class="container">
-                <div id="sentPayments" class="payment-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="reportsView" class="view">
-        <div class="header">
-            <div class="header-content">
-                <h1>Reports</h1>
-                <div class="subtitle">Monthly overview</div>
-            </div>
-        </div>
-        <div class="view-content">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Current Month</h2>
-                </div>
-                <div class="report-card" id="monthlyReport"></div>
-
-                <div class="section-header">
-                    <h2>Statements</h2>
-                    <button class="action-btn" onclick="showUploadStatement()" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);">+ Upload</button>
-                </div>
-                <div id="statementsList"></div>
-            </div>
-        </div>
-    </div>
-
-    <button class="fab" onclick="window.showAddPayment()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>
-
-    <div id="addPaymentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Add Payment</h2>
-                <button class="close-btn" onclick="closeModal('addPaymentModal')">×</button>
-            </div>
-            <form onsubmit="addPayment(event)">
-                <div class="form-group">
-                    <label class="form-label">Invoice / Receipt</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
-                        <label class="file-upload-label" style="margin: 0; padding: 20px;">
-                            <div style="font-size: 32px; margin-bottom: 8px;">📸</div>
-                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Take Photo</div>
-                            <div style="font-size: 11px; color: var(--text-secondary);">AI Extract</div>
-                            <input type="file" id="invoiceFileCamera" accept="image/*" capture="environment" style="display: none;">
-                        </label>
-                        <label class="file-upload-label" style="margin: 0; padding: 20px;">
-                            <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
-                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Upload File</div>
-                            <div style="font-size: 11px; color: var(--text-secondary);">Image/PDF</div>
-                            <input type="file" id="invoiceFileUpload" accept="image/*,.pdf" style="display: none;">
-                        </label>
+            <div class="view-content">
+                <div class="stats-grid">
+                    <div class="stat-card pending">
+                        <div class="label">Pending</div>
+                        <div class="value" id="pendingCount">0</div>
                     </div>
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;" id="invoiceFileName"></div>
-                    <div class="invoice-preview" id="invoicePreview">
-                        <div class="preview-title">
-                            <span>🔍</span> Extracted Data
+                    <div class="stat-card approved">
+                        <div class="label">Approved</div>
+                        <div class="value" id="approvedCount">0</div>
+                    </div>
+                    <div class="stat-card cash">
+                        <div class="label">Cash Pot</div>
+                        <div class="value" id="cashPot">£0</div>
+                    </div>
+                    <div class="stat-card expense">
+                        <div class="label">Month Out</div>
+                        <div class="value" id="monthExpense">£0</div>
+                    </div>
+                </div>
+
+                <div class="container">
+                    <div class="section-header">
+                        <h2>Recent Activity</h2>
+                    </div>
+                    <div id="recentPayments" class="payment-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pendingView" class="view">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Pending</h1>
+                    <div class="subtitle">Awaiting approval</div>
+                </div>
+            </div>
+            <div class="view-content">
+                <div class="container">
+                    <div id="pendingPayments" class="payment-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="approvedView" class="view">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Approved</h1>
+                    <div class="subtitle">Ready to send</div>
+                </div>
+            </div>
+            <div class="view-content">
+                <div class="container">
+                    <div id="approvedPayments" class="payment-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="cashControlView" class="view">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Cash Control</h1>
+                    <div class="subtitle">Cash pot management</div>
+                </div>
+            </div>
+            <div class="view-content">
+                <div class="container">
+                    <div class="section-header">
+                        <h2>Available Cash</h2>
+                    </div>
+                    <div class="stat-card cash" style="margin-bottom: 24px;">
+                        <div class="label">Current Cash Pot</div>
+                        <div class="value" id="cashPotDetail">£0</div>
+                    </div>
+
+                    <div class="section-header">
+                        <h2>Cash History</h2>
+                    </div>
+                    <div id="cashPayments" class="payment-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="sentView" class="view">
+            <div class="header">
+                <div class="header-content">
+                    <h1>Sent</h1>
+                    <div class="subtitle">Completed payments</div>
+                </div>
+            </div>
+            <div class="view-content">
+                <div class="container">
+                    <div id="sentPayments" class="payment-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <button class="fab" onclick="window.showAddPayment()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+
+        <div id="addPaymentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add Payment</h2>
+                    <button class="close-btn" onclick="closeModal('addPaymentModal')">×</button>
+                </div>
+                <form onsubmit="addPayment(event)">
+                    <div class="form-group">
+                        <label class="form-label">Invoice / Receipt</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+                            <label class="file-upload-label" style="margin: 0; padding: 20px;">
+                                <div style="font-size: 32px; margin-bottom: 8px;">📸</div>
+                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Take Photo</div>
+                                <div style="font-size: 11px; color: var(--text-secondary);">AI Extract</div>
+                                <input type="file" id="invoiceFileCamera" accept="image/*" capture="environment" style="display: none;">
+                            </label>
+                            <label class="file-upload-label" style="margin: 0; padding: 20px;">
+                                <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
+                                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Upload File</div>
+                                <div style="font-size: 11px; color: var(--text-secondary);">Image/PDF</div>
+                                <input type="file" id="invoiceFileUpload" accept="image/*,.pdf" style="display: none;">
+                            </label>
                         </div>
-                        <img id="previewImage" class="preview-image" alt="Invoice preview">
-                        <div class="extracted-data" id="extractedData"></div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;" id="invoiceFileName"></div>
+                        <div class="invoice-preview" id="invoicePreview">
+                            <div class="preview-title">
+                                <span>📄</span> Extracted Data
+                            </div>
+                            <img id="previewImage" class="preview-image" alt="Invoice preview">
+                            <div class="extracted-data" id="extractedData"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-input" id="paymentDesc" placeholder="Enter description or upload invoice" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Amount (£)</label>
-                    <input type="number" step="0.01" class="form-input" id="paymentAmount" placeholder="0.00" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select class="form-select" id="paymentCategory" required>
-                        <option value="">Select category</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Supplies">Supplies</option>
-                        <option value="Maintenance">Maintenance</option>
-                        <option value="Services">Services</option>
-                        <option value="Rent">Rent</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Type</label>
-                    <select class="form-select" id="paymentType" required>
-                        <option value="expense">Expense (Out)</option>
-                        <option value="income">Income (In)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Payment Method</label>
-                    <select class="form-select" id="paymentMethod" required>
-                        <option value="bank">Bank Transfer</option>
-                        <option value="cash">Cash</option>
-                        <option value="cheque">Cheque</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Notes (Optional)</label>
-                    <textarea class="form-textarea" id="paymentNotes" placeholder="Add any additional notes..."></textarea>
-                </div>
-                <button type="submit" class="btn-submit">Add Payment</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="uploadStatementModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Upload Statement</h2>
-                <button class="close-btn" onclick="closeModal('uploadStatementModal')">×</button>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-input" id="paymentDesc" placeholder="Enter description or upload invoice" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Amount (£)</label>
+                        <input type="number" step="0.01" class="form-input" id="paymentAmount" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="paymentCategory" required onchange="handleCategoryChange()">
+                            <option value="">Select category</option>
+                            <option value="Staff Invoice">Staff Invoice</option>
+                            <option value="Services">Services</option>
+                            <option value="Utility Bill">Utility Bill</option>
+                            <option value="Supplies">Supplies</option>
+                            <option value="Donation">Donation</option>
+                            <option value="Banking">Banking</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="paymentTypeGroup">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" id="paymentType" required onchange="handleTypeChange()">
+                            <option value="expense">Expense (Out)</option>
+                            <option value="income">Income (In)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="paymentMethodGroup">
+                        <label class="form-label">Payment Method</label>
+                        <select class="form-select" id="paymentMethod" required>
+                            <option value="bank">Bank Transfer</option>
+                            <option value="cash">Cash</option>
+                            <option value="cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea class="form-input form-textarea" id="paymentNotes" placeholder="Add any additional notes..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit">Add Payment</button>
+                </form>
             </div>
-            <div style="background: var(--card-bg-elevated); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 3px solid var(--primary);">
-                <div style="font-weight: 600; margin-bottom: 8px; font-size: 15px;">How Statements Work</div>
-                <div style="font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
-                    Bank statements are for reference only - they won't create duplicate entries. Use them to cross-check your manual entries and reconcile accounts.
+        </div>
+
+        <!-- Image Modal -->
+        <div id="imageModal" class="image-modal">
+            <div class="image-modal-content">
+                <div class="image-modal-header">
+                    <div class="image-modal-title" id="imageModalTitle">Invoice</div>
+                    <button class="image-modal-close" onclick="closeImageModal()">×</button>
                 </div>
+                <img id="modalImage" alt="Invoice">
             </div>
-            <form onsubmit="uploadStatement(event)">
-                <div class="form-group">
-                    <label class="form-label">Month</label>
-                    <input type="month" class="form-input" id="statementMonth" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Statement Type</label>
-                    <select class="form-select" id="statementType" required>
-                        <option value="">Select type</option>
-                        <option value="bank">Bank Statement</option>
-                        <option value="cash">Cash Book</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Statement File</label>
-                    <label class="file-upload-label" style="margin-top: 8px;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
-                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 16px;">Choose File</div>
-                        <div style="font-size: 14px; color: var(--text-secondary);" id="statementFileName">PDF, Excel, or CSV</div>
-                        <input type="file" id="statementFile" accept=".pdf,.xlsx,.xls,.csv" required>
-                    </label>
-                </div>
-                <button type="submit" class="btn-submit">Upload Statement</button>
-            </form>
         </div>
-    </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchView('dashboard')">
-            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-            </svg>
-            <div class="label">Home</div>
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="switchView('dashboard')">
+                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                    <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                    <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                    <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                </svg>
+                <div class="label">Home</div>
+            </div>
+            <div class="nav-item" onclick="switchView('pending')">
+                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <div class="label">Pending</div>
+                <span class="badge" id="pendingBadge" style="display: none;">0</span>
+            </div>
+            <div class="nav-item" onclick="switchView('approved')">
+                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <div class="label">Approved</div>
+                <span class="badge" id="approvedBadge" style="display: none;">0</span>
+            </div>
+            <div class="nav-item" onclick="switchView('sent')">
+                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 2 11 13"></polyline>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <div class="label">Sent</div>
+            </div>
+            <div class="nav-item" onclick="switchView('cashControl')">
+                <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                </svg>
+                <div class="label">Cash</div>
+            </div>
         </div>
-        <div class="nav-item" onclick="switchView('pending')">
-            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <div class="label">Pending</div>
-            <span class="badge" id="pendingBadge" style="display: none;">0</span>
-        </div>
-        <div class="nav-item" onclick="switchView('approved')">
-            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            <div class="label">Approved</div>
-            <span class="badge" id="approvedBadge" style="display: none;">0</span>
-        </div>
-        <div class="nav-item" onclick="switchView('sent')">
-            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 2 11 13"></polyline>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-            <div class="label">Sent</div>
-        </div>
-        <div class="nav-item" onclick="switchView('reports')">
-            <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="20" x2="12" y2="10"></line>
-                <line x1="18" y1="20" x2="18" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="16"></line>
-            </svg>
-            <div class="label">Reports</div>
-        </div>
-    </div>
 
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <div class="loading-text">Scanning Invoice...</div>
-        <div class="loading-subtext">Extracting data from image</div>
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Scanning Invoice...</div>
+            <div class="loading-subtext">Extracting data from image</div>
+        </div>
     </div>
 
     <script>
-        console.log('DUL Accounts App Starting...');
-        
-        window.payments = JSON.parse(localStorage.getItem('dulPayments')) || [];
-        window.statements = JSON.parse(localStorage.getItem('dulStatements')) || [];
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCz5GKCJfazH9e-4z4X5QNd4o9BZV8gMoU",
+            authDomain: "dul-accounts.firebaseapp.com",
+            projectId: "dul-accounts",
+            storageBucket: "dul-accounts.firebasestorage.app",
+            messagingSenderId: "508206162333",
+            appId: "1:508206162333:web:8fe26acd229aea1a93cf74"
+        };
 
-        function saveData() {
-            localStorage.setItem('dulPayments', JSON.stringify(window.payments));
-            localStorage.setItem('dulStatements', JSON.stringify(window.statements));
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Global variables
+        window.payments = [];
+        let isOnline = false;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DUL Accounts App Starting...');
+            initializeFirebase();
+            setupFileInputs();
+        });
+
+        async function initializeFirebase() {
+            try {
+                // Sign in anonymously for database access
+                await auth.signInAnonymously();
+                console.log('Firebase initialized successfully');
+                isOnline = true;
+                updateSyncStatus('synced');
+                loadPayments();
+                setupRealtimeSync();
+            } catch (error) {
+                console.log('Firebase initialization failed, running offline:', error);
+                isOnline = false;
+                updateSyncStatus('offline');
+                loadPaymentsOffline();
+            }
         }
+
+        function setupRealtimeSync() {
+            // Listen for real-time updates
+            db.collection('payments').doc('shared')
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.payments) {
+                            window.payments = data.payments;
+                            updateStats();
+                            renderRecentPayments();
+                            renderPendingPayments();
+                            renderApprovedPayments();
+                            renderSentPayments();
+                            renderCashControl();
+                        }
+                    }
+                }, (error) => {
+                    console.log('Realtime sync error:', error);
+                    updateSyncStatus('offline');
+                });
+        }
+
+        async function saveData() {
+            updateSyncStatus('syncing');
+            
+            try {
+                if (isOnline) {
+                    await db.collection('payments').doc('shared').set({
+                        payments: window.payments,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    updateSyncStatus('synced');
+                }
+            } catch (error) {
+                console.error('Error saving to Firebase:', error);
+                updateSyncStatus('offline');
+            }
+            
+            // Always save locally as backup
+            localStorage.setItem('dulPayments', JSON.stringify(window.payments));
+        }
+
+        async function loadPayments() {
+            updateSyncStatus('syncing');
+            
+            try {
+                const doc = await db.collection('payments').doc('shared').get();
+                
+                if (doc.exists) {
+                    const data = doc.data();
+                    window.payments = data.payments || [];
+                } else {
+                    // Try to load from localStorage
+                    const localData = localStorage.getItem('dulPayments');
+                    window.payments = localData ? JSON.parse(localData) : [];
+                    
+                    // If we have local data, sync it to Firebase
+                    if (window.payments.length > 0) {
+                        await saveData();
+                    }
+                }
+                
+                updateStats();
+                renderRecentPayments();
+                updateSyncStatus('synced');
+                
+            } catch (error) {
+                console.error('Error loading from Firebase:', error);
+                loadPaymentsOffline();
+                updateSyncStatus('offline');
+            }
+        }
+
+        function loadPaymentsOffline() {
+            const localData = localStorage.getItem('dulPayments');
+            window.payments = localData ? JSON.parse(localData) : [];
+            updateStats();
+            renderRecentPayments();
+        }
+
+        function updateSyncStatus(status) {
+            const syncEl = document.getElementById('syncStatus');
+            const dotEl = syncEl.querySelector('.sync-dot');
+            const textEl = syncEl.querySelector('span');
+            
+            syncEl.className = `sync-status ${status}`;
+            dotEl.className = `sync-dot ${status}`;
+            
+            switch(status) {
+                case 'syncing':
+                    textEl.textContent = 'Syncing...';
+                    break;
+                case 'synced':
+                    textEl.textContent = 'Synced';
+                    break;
+                default:
+                    textEl.textContent = 'Offline';
+            }
+        }
+
+        // All the existing DUL Accounts functions
+        window.handleCategoryChange = function() {
+            const category = document.getElementById('paymentCategory').value;
+            const typeGroup = document.getElementById('paymentTypeGroup');
+            const methodGroup = document.getElementById('paymentMethodGroup');
+            const typeSelect = document.getElementById('paymentType');
+            const methodSelect = document.getElementById('paymentMethod');
+            
+            if (category === 'Banking') {
+                typeGroup.style.display = 'none';
+                typeSelect.value = 'expense';
+                typeSelect.removeAttribute('required');
+                
+                methodGroup.style.display = 'block';
+                methodSelect.innerHTML = '<option value="cash">Cash</option>';
+                methodSelect.value = 'cash';
+                methodSelect.setAttribute('required', 'required');
+            } else {
+                typeGroup.style.display = 'block';
+                typeSelect.setAttribute('required', 'required');
+                
+                methodSelect.innerHTML = `
+                    <option value="bank">Bank Transfer</option>
+                    <option value="cash">Cash</option>
+                    <option value="cheque">Cheque</option>
+                `;
+                handleTypeChange();
+            }
+        };
+
+        window.handleTypeChange = function() {
+            const category = document.getElementById('paymentCategory').value;
+            
+            if (category === 'Banking') {
+                return;
+            }
+            
+            const type = document.getElementById('paymentType').value;
+            const methodGroup = document.getElementById('paymentMethodGroup');
+            
+            methodGroup.style.display = 'block';
+            document.getElementById('paymentMethod').setAttribute('required', 'required');
+        };
 
         window.showAddPayment = function() {
             const modal = document.getElementById('addPaymentModal');
             if (modal) {
                 modal.classList.add('active');
+                handleCategoryChange();
                 setTimeout(setupFileInputs, 100);
             }
-        };
-
-        window.showUploadStatement = function() {
-            document.getElementById('uploadStatementModal').classList.add('active');
         };
 
         window.closeModal = function(modalId) {
@@ -1074,8 +1321,15 @@
             }
         };
 
+        window.closeImageModal = function() {
+            const modal = document.getElementById('imageModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        };
+
         window.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
+            if (e.target.classList.contains('modal') || e.target.classList.contains('image-modal')) {
                 e.target.classList.remove('active');
             }
         });
@@ -1089,8 +1343,8 @@
             
             if (view === 'pending') renderPendingPayments();
             if (view === 'approved') renderApprovedPayments();
+            if (view === 'cashControl') renderCashControl();
             if (view === 'sent') renderSentPayments();
-            if (view === 'reports') renderReports();
         };
 
         window.addPayment = function(event) {
@@ -1119,13 +1373,24 @@
         };
 
         function savePayment(invoiceData) {
+            const category = document.getElementById('paymentCategory').value;
+            let type, paymentMethod;
+            
+            if (category === 'Banking') {
+                type = 'expense';
+                paymentMethod = 'cash';
+            } else {
+                type = document.getElementById('paymentType').value;
+                paymentMethod = document.getElementById('paymentMethod').value;
+            }
+            
             const payment = {
                 id: Date.now().toString(),
                 description: document.getElementById('paymentDesc').value,
                 amount: parseFloat(document.getElementById('paymentAmount').value),
-                category: document.getElementById('paymentCategory').value,
-                type: document.getElementById('paymentType').value,
-                paymentMethod: document.getElementById('paymentMethod').value,
+                category: category,
+                type: type,
+                paymentMethod: paymentMethod,
                 notes: document.getElementById('paymentNotes').value,
                 invoice: invoiceData,
                 status: 'pending',
@@ -1139,29 +1404,49 @@
             document.querySelector('#addPaymentModal form').reset();
             document.getElementById('invoiceFileName').textContent = '';
             document.getElementById('invoicePreview').classList.remove('active');
-            loadPayments();
+            
+            updateStats();
+            renderRecentPayments();
+            renderPendingPayments();
         }
 
         window.approvePayment = function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (payment) {
-                payment.status = 'approved';
+                if (payment.type === 'income' && payment.paymentMethod === 'cash') {
+                    payment.status = 'in-pot';
+                } else {
+                    payment.status = 'approved';
+                }
                 saveData();
-                loadPayments();
+                updateStats();
+                renderRecentPayments();
                 renderPendingPayments();
                 renderApprovedPayments();
+                renderCashControl();
             }
         };
 
         window.markAsSent = function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (payment) {
+                const cashPot = calculateCashPot();
+                
+                if (payment.paymentMethod === 'cash' && payment.type === 'expense') {
+                    if (cashPot < payment.amount) {
+                        alert(`Insufficient cash. Available: £${cashPot.toFixed(2)}, Required: £${payment.amount.toFixed(2)}`);
+                        return;
+                    }
+                }
+                
                 payment.status = 'sent';
                 payment.sentAt = new Date().toISOString();
                 saveData();
-                loadPayments();
+                updateStats();
+                renderRecentPayments();
                 renderApprovedPayments();
                 renderSentPayments();
+                renderCashControl();
             }
         };
 
@@ -1170,18 +1455,24 @@
             
             window.payments = window.payments.filter(p => p.id !== id);
             saveData();
-            loadPayments();
+            updateStats();
+            renderRecentPayments();
             renderPendingPayments();
             renderApprovedPayments();
             renderSentPayments();
+            renderCashControl();
         };
 
         window.viewInvoice = function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (!payment || !payment.invoice) return;
             
-            const win = window.open('', '_blank');
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalTitle = document.getElementById('imageModalTitle');
+            
             if (payment.invoice.type.includes('pdf')) {
+                const win = window.open('', '_blank');
                 win.document.write(`
                     <iframe src="${payment.invoice.data}" 
                             style="width:100%; height:100vh; border:none;" 
@@ -1189,102 +1480,41 @@
                     </iframe>
                 `);
             } else {
-                win.document.write(`
-                    <img src="${payment.invoice.data}" 
-                         style="max-width:100%; height:auto;" 
-                         alt="${payment.invoice.name}">
-                `);
+                modalImage.src = payment.invoice.data;
+                modalTitle.textContent = payment.invoice.name || 'Invoice';
+                modal.classList.add('active');
             }
         };
 
-        window.uploadStatement = function(event) {
-            event.preventDefault();
+        function calculateCashPot() {
+            const cashIn = window.payments
+                .filter(p => p.type === 'income' && p.paymentMethod === 'cash' && p.status === 'in-pot')
+                .reduce((sum, p) => sum + p.amount, 0);
             
-            const month = document.getElementById('statementMonth').value;
-            const type = document.getElementById('statementType').value;
-            const file = document.getElementById('statementFile').files[0];
+            const cashOut = window.payments
+                .filter(p => p.type === 'expense' && p.paymentMethod === 'cash' && p.status === 'sent')
+                .reduce((sum, p) => sum + p.amount, 0);
             
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onloadend = function() {
-                const statement = {
-                    id: Date.now().toString(),
-                    month: month,
-                    type: type,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    fileData: reader.result,
-                    uploadedAt: new Date().toISOString()
-                };
-                
-                window.statements.push(statement);
-                saveData();
-                closeModal('uploadStatementModal');
-                document.querySelector('#uploadStatementModal form').reset();
-                document.getElementById('statementFileName').textContent = 'PDF, Excel, or CSV';
-                renderReports();
-            };
-            reader.readAsDataURL(file);
-        };
-
-        window.viewStatement = function(id) {
-            const statement = window.statements.find(s => s.id === id);
-            if (!statement) return;
-            
-            const win = window.open('', '_blank');
-            if (statement.fileName.toLowerCase().endsWith('.pdf')) {
-                win.document.write(`
-                    <iframe src="${statement.fileData}" 
-                            style="width:100%; height:100vh; border:none;" 
-                            title="${statement.fileName}">
-                    </iframe>
-                `);
-            } else {
-                win.document.write(`
-                    <div style="padding: 20px; font-family: system-ui;">
-                        <h2>${statement.fileName}</h2>
-                        <p>Download the file to view Excel/CSV statements</p>
-                        <a href="${statement.fileData}" download="${statement.fileName}" 
-                           style="background: #10A37F; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 20px;">
-                            Download File
-                        </a>
-                    </div>
-                `);
-            }
-        };
-
-        window.deleteStatement = function(id) {
-            if (!confirm('Delete this statement?')) return;
-            
-            window.statements = window.statements.filter(s => s.id !== id);
-            saveData();
-            renderReports();
-        };
-
-        function loadPayments() {
-            updateStats();
-            renderRecentPayments();
+            return cashIn - cashOut;
         }
 
         function updateStats() {
             const pending = window.payments.filter(p => p.status === 'pending').length;
             const approved = window.payments.filter(p => p.status === 'approved').length;
             
+            const cashPot = calculateCashPot();
+            
             const currentMonth = new Date().toISOString().slice(0, 7);
             const monthPayments = window.payments.filter(p => p.date?.startsWith(currentMonth));
             
-            const income = monthPayments
-                .filter(p => p.type === 'income' && p.status === 'sent')
-                .reduce((sum, p) => sum + p.amount, 0);
-            
             const expense = monthPayments
-                .filter(p => p.type === 'expense' && p.status === 'sent')
+                .filter(p => p.type === 'expense' && p.status === 'sent' && p.category !== 'Banking')
                 .reduce((sum, p) => sum + p.amount, 0);
             
             document.getElementById('pendingCount').textContent = pending;
             document.getElementById('approvedCount').textContent = approved;
-            document.getElementById('monthIncome').textContent = '£' + income.toFixed(2);
+            document.getElementById('cashPot').textContent = '£' + cashPot.toFixed(2);
+            document.getElementById('cashPotDetail').textContent = '£' + cashPot.toFixed(2);
             document.getElementById('monthExpense').textContent = '£' + expense.toFixed(2);
             
             const pendingBadge = document.getElementById('pendingBadge');
@@ -1307,7 +1537,8 @@
 
         function renderPaymentCard(payment) {
             const statusClass = `status-${payment.status}`;
-            const statusText = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
+            let statusText = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
+            if (payment.status === 'in-pot') statusText = 'In Pot';
             
             const methodIcon = payment.paymentMethod === 'cash' ? '💵' : 
                               payment.paymentMethod === 'cheque' ? '📝' : '🏦';
@@ -1330,7 +1561,7 @@
             }
             
             const invoiceButton = payment.invoice ? 
-                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📎 Invoice</button>` : '';
+                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">🔍 Invoice</button>` : '';
             
             return `
                 <div class="payment-card">
@@ -1385,7 +1616,7 @@
             if (pending.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="icon">✓</div>
+                        <div class="icon">✅</div>
                         <div class="title">All caught up!</div>
                         <div class="subtitle">No payments pending approval</div>
                     </div>
@@ -1403,7 +1634,7 @@
             if (approved.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="icon">📭</div>
+                        <div class="icon">🔭</div>
                         <div class="title">Nothing to send</div>
                         <div class="subtitle">No approved payments waiting</div>
                     </div>
@@ -1412,6 +1643,27 @@
             }
             
             container.innerHTML = approved.map(renderPaymentCard).join('');
+        }
+
+        function renderCashControl() {
+            const container = document.getElementById('cashPayments');
+            const cashPayments = window.payments.filter(p => 
+                (p.type === 'income' && p.paymentMethod === 'cash' && p.status === 'in-pot') ||
+                (p.type === 'expense' && p.paymentMethod === 'cash' && p.status === 'sent')
+            ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            if (cashPayments.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">💵</div>
+                        <div class="title">No cash transactions</div>
+                        <div class="subtitle">Cash income and expenses will appear here</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = cashPayments.map(renderPaymentCard).join('');
         }
 
         function renderSentPayments() {
@@ -1430,68 +1682,6 @@
             }
             
             container.innerHTML = sent.map(renderPaymentCard).join('');
-        }
-
-        function renderReports() {
-            const currentMonth = new Date().toISOString().slice(0, 7);
-            const monthPayments = window.payments.filter(p => p.date?.startsWith(currentMonth));
-            
-            const income = monthPayments
-                .filter(p => p.type === 'income' && p.status === 'sent')
-                .reduce((sum, p) => sum + p.amount, 0);
-            
-            const expense = monthPayments
-                .filter(p => p.type === 'expense' && p.status === 'sent')
-                .reduce((sum, p) => sum + p.amount, 0);
-            
-            const balance = income - expense;
-            
-            document.getElementById('monthlyReport').innerHTML = `
-                <div class="report-row">
-                    <span>Total Income</span>
-                    <span style="color: var(--success);">£${income.toFixed(2)}</span>
-                </div>
-                <div class="report-row">
-                    <span>Total Expenses</span>
-                    <span style="color: var(--danger);">£${expense.toFixed(2)}</span>
-                </div>
-                <div class="report-row">
-                    <span>Net Balance</span>
-                    <span style="color: ${balance >= 0 ? 'var(--success)' : 'var(--danger)'};">£${balance.toFixed(2)}</span>
-                </div>
-            `;
-            
-            const statementsContainer = document.getElementById('statementsList');
-            if (window.statements.length === 0) {
-                statementsContainer.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">📄</div>
-                        <div class="title">No statements</div>
-                        <div class="subtitle">Upload bank statements for reference and reconciliation</div>
-                    </div>
-                `;
-            } else {
-                statementsContainer.innerHTML = window.statements
-                    .sort((a, b) => new Date(b.month) - new Date(a.month))
-                    .map(s => {
-                        const monthName = new Date(s.month + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-                        const typeIcon = s.type === 'bank' ? '🏦' : s.type === 'cash' ? '💵' : '📄';
-                        const fileSize = (s.fileSize / 1024).toFixed(1);
-                        
-                        return `
-                            <div class="statement-card">
-                                <div class="statement-info">
-                                    <div class="name">${typeIcon} ${monthName}</div>
-                                    <div class="date">${s.fileName} • ${fileSize} KB</div>
-                                </div>
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="btn-view" onclick="viewStatement('${s.id}')" style="padding: 8px 14px; width: auto;">View</button>
-                                    <button onclick="deleteStatement('${s.id}')" style="background: var(--danger); color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer;">×</button>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-            }
         }
 
         async function processInvoice(file) {
@@ -1769,27 +1959,12 @@
                 uploadInput.dataset.listenerAttached = 'true';
                 console.log('Upload input handler attached');
             }
-            
-            const statementFileInput = document.getElementById('statementFile');
-            if (statementFileInput && !statementFileInput.dataset.listenerAttached) {
-                statementFileInput.addEventListener('change', function(e) {
-                    const fileName = e.target.files[0]?.name || 'PDF, Excel, or CSV';
-                    document.getElementById('statementFileName').textContent = fileName;
-                });
-                statementFileInput.dataset.listenerAttached = 'true';
-            }
         }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM Content Loaded - setting up file inputs');
-            setupFileInputs();
-        });
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
 
-        loadPayments();
         console.log('App initialized successfully');
     </script>
 </body>
