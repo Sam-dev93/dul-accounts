@@ -994,8 +994,8 @@
                             <label class="file-upload-label" style="margin: 0; padding: 20px;">
                                 <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
                                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Upload File</div>
-                                <div style="font-size: 11px; color: var(--text-secondary);">Image/PDF</div>
-                                <input type="file" id="invoiceFileUpload" accept="image/*,.pdf" style="display: none;">
+                                <div style="font-size: 11px; color: var(--text-secondary);">Image Only</div>
+                                <input type="file" id="invoiceFileUpload" accept="image/*" style="display: none;">
                             </label>
                         </div>
                         <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;" id="invoiceFileName"></div>
@@ -1321,6 +1321,9 @@
             } catch (error) {
                 console.error('Sync error:', error);
                 updateSyncStatus('offline');
+                if (error.message && error.message.includes('too large')) {
+                    alert(error.message);
+                }
             } finally {
                 isSyncing = false;
                 
@@ -1367,6 +1370,13 @@
                 } catch (error) {
                     console.error('Save error:', error);
                     
+                    if (error.message && error.message.includes('too large')) {
+                        updateSyncStatus('offline');
+                        isSyncing = false;
+                        alert(error.message);
+                        return;
+                    }
+                    
                     if (uploadRetryCount < MAX_UPLOAD_RETRIES) {
                         uploadRetryCount++;
                         console.log(`Retrying upload... (${uploadRetryCount}/${MAX_UPLOAD_RETRIES})`);
@@ -1386,7 +1396,26 @@
         async function uploadToFirebase() {
             console.log('Uploading to Firebase...');
             const dataSize = JSON.stringify(window.payments).length;
-            console.log(`Upload size: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
+            const dataSizeMB = dataSize / 1024 / 1024;
+            console.log(`Upload size: ${dataSizeMB.toFixed(2)} MB`);
+            
+            // Firebase Firestore document size limit is 1MB
+            if (dataSizeMB > 0.95) {
+                console.error('Data too large for Firebase!', dataSizeMB.toFixed(2), 'MB');
+                
+                // Count payments with base64 images
+                const paymentsWithBase64 = window.payments.filter(p => p.invoice && p.invoice.data);
+                
+                if (paymentsWithBase64.length > 0) {
+                    throw new Error(
+                        `Cannot sync: Data too large (${dataSizeMB.toFixed(2)}MB). ` +
+                        `${paymentsWithBase64.length} payment(s) have images that failed cloud upload. ` +
+                        `Please retry uploading those images or remove them.`
+                    );
+                } else {
+                    throw new Error(`Cannot sync: Data too large (${dataSizeMB.toFixed(2)}MB)`);
+                }
+            }
             
             await db.collection('payments').doc('shared').set({
                 payments: window.payments,
@@ -1484,8 +1513,8 @@
             console.log('Sync status:', status);
         }
 
-        // IMAGE COMPRESSION FUNCTION
-        async function compressImage(file, maxWidth = 1200, quality = 0.7) {
+        // SUPER AGGRESSIVE IMAGE COMPRESSION
+        async function compressImage(file, maxWidth = 400, quality = 0.4) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 
@@ -1537,48 +1566,49 @@
             });
         }
 
-        // UPLOAD IMAGE TO TELEGRAPH WITH FALLBACK
-        async function uploadImageToTelegraph(file) {
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                console.log('Uploading to Telegraph...');
-                const response = await fetch(TELEGRAPH_UPLOAD_URL, {
-                    method: 'POST',
-                    body: formData,
-                    mode: 'cors'
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Telegraph upload failed: ${response.statusText}`);
+        // UPLOAD IMAGE TO TELEGRAPH WITH RETRY
+        async function uploadImageToTelegraph(file, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    console.log(`Uploading to Telegraph (attempt ${i + 1}/${retries})...`);
+                    
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 15000);
+                    
+                    const response = await fetch(TELEGRAPH_UPLOAD_URL, {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeout);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Telegraph upload failed: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data && data[0] && data[0].src) {
+                        const imageUrl = 'https://telegra.ph' + data[0].src;
+                        console.log('Image uploaded to Telegraph:', imageUrl);
+                        return imageUrl;
+                    } else {
+                        throw new Error('Invalid response from Telegraph');
+                    }
+                } catch (error) {
+                    console.error(`Telegraph upload attempt ${i + 1} failed:`, error);
+                    if (i === retries - 1) {
+                        console.error('All Telegraph upload attempts failed');
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
                 }
-                
-                const data = await response.json();
-                
-                if (data && data[0] && data[0].src) {
-                    const imageUrl = 'https://telegra.ph' + data[0].src;
-                    console.log('Image uploaded to Telegraph:', imageUrl);
-                    return imageUrl;
-                } else {
-                    throw new Error('Invalid response from Telegraph');
-                }
-            } catch (error) {
-                console.error('Telegraph upload error:', error);
-                console.log('Falling back to base64 storage');
-                // Fallback to base64 if Telegraph fails
-                return null;
             }
-        }
-
-        // Convert file to base64
-        async function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
         }
 
         // Form handlers
@@ -1669,73 +1699,65 @@
             const uploadFile = document.getElementById('invoiceFileUpload').files[0];
             let invoiceFile = cameraFile || uploadFile;
             
-            if (invoiceFile) {
-                if (invoiceFile.type.startsWith('image/')) {
+            if (invoiceFile && invoiceFile.type.startsWith('image/')) {
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                const loadingText = loadingOverlay.querySelector('.loading-text');
+                const loadingSubtext = loadingOverlay.querySelector('.loading-subtext');
+                
+                try {
+                    loadingOverlay.classList.add('active');
+                    loadingText.textContent = 'Compressing Image...';
+                    loadingSubtext.textContent = 'Super compression for reliable upload';
+                    
+                    invoiceFile = await compressImage(invoiceFile, 400, 0.4);
+                    
+                    const sizeKB = invoiceFile.size / 1024;
+                    console.log(`Compressed image size: ${sizeKB.toFixed(2)}KB`);
+                    
+                    loadingText.textContent = 'Uploading Image...';
+                    loadingSubtext.textContent = 'Uploading to cloud storage';
+                    
+                    let invoiceData;
+                    
                     try {
-                        const loadingOverlay = document.getElementById('loadingOverlay');
-                        const loadingText = loadingOverlay.querySelector('.loading-text');
-                        const loadingSubtext = loadingOverlay.querySelector('.loading-subtext');
-                        
-                        // Compress image
-                        loadingOverlay.classList.add('active');
-                        loadingText.textContent = 'Compressing Image...';
-                        loadingSubtext.textContent = 'Optimizing for upload';
-                        
-                        invoiceFile = await compressImage(invoiceFile, 800, 0.6); // Smaller size for better compatibility
-                        
-                        // Try to upload to Telegraph
-                        loadingText.textContent = 'Uploading Image...';
-                        loadingSubtext.textContent = 'Uploading to cloud';
-                        
-                        let imageUrl = await uploadImageToTelegraph(invoiceFile);
-                        let invoiceData;
-                        
-                        if (imageUrl) {
-                            // Telegraph upload successful
-                            invoiceData = {
-                                name: invoiceFile.name,
-                                type: invoiceFile.type,
-                                url: imageUrl,
-                                uploadedAt: new Date().toISOString()
-                            };
-                        } else {
-                            // Telegraph failed, use base64 fallback
-                            loadingText.textContent = 'Saving Image...';
-                            loadingSubtext.textContent = 'Using local storage';
-                            
-                            const base64Data = await fileToBase64(invoiceFile);
-                            invoiceData = {
-                                name: invoiceFile.name,
-                                type: invoiceFile.type,
-                                data: base64Data,
-                                uploadedAt: new Date().toISOString()
-                            };
-                        }
-                        
-                        loadingOverlay.classList.remove('active');
-                        loadingText.textContent = 'Scanning Invoice...';
-                        loadingSubtext.textContent = 'Extracting data from image';
-                        
-                        savePaymentWithInvoice(invoiceData, Date.now().toString());
-                        
-                    } catch (error) {
-                        console.error('Image processing error:', error);
-                        const loadingOverlay = document.getElementById('loadingOverlay');
-                        loadingOverlay.classList.remove('active');
-                        alert('Failed to process image. Please try again.');
-                    }
-                } else if (invoiceFile.type === 'application/pdf') {
-                    // For PDFs, store as base64
-                    const reader = new FileReader();
-                    reader.onloadend = function() {
-                        const invoiceData = {
+                        const imageUrl = await uploadImageToTelegraph(invoiceFile, 3);
+                        invoiceData = {
                             name: invoiceFile.name,
                             type: invoiceFile.type,
-                            data: reader.result
+                            url: imageUrl,
+                            uploadedAt: new Date().toISOString(),
+                            size: invoiceFile.size
                         };
-                        savePaymentWithInvoice(invoiceData, Date.now().toString());
-                    };
-                    reader.readAsDataURL(invoiceFile);
+                        console.log('Using Telegraph URL for invoice');
+                    } catch (uploadError) {
+                        loadingOverlay.classList.remove('active');
+                        
+                        const useWithoutImage = confirm(
+                            'Failed to upload image to cloud storage after 3 attempts.\n\n' +
+                            'This may be due to network issues or Telegraph being unavailable.\n\n' +
+                            'Options:\n' +
+                            '- Click OK to save payment WITHOUT image\n' +
+                            '- Click Cancel to try again'
+                        );
+                        
+                        if (!useWithoutImage) {
+                            return;
+                        }
+                        
+                        invoiceData = null;
+                        console.log('Saving payment without image due to upload failure');
+                    }
+                    
+                    loadingOverlay.classList.remove('active');
+                    loadingText.textContent = 'Scanning Invoice...';
+                    loadingSubtext.textContent = 'Extracting data from image';
+                    
+                    savePaymentWithInvoice(invoiceData, Date.now().toString());
+                    
+                } catch (error) {
+                    console.error('Image processing error:', error);
+                    loadingOverlay.classList.remove('active');
+                    alert('Failed to process image. Please try again or save without image.');
                 }
             } else {
                 savePaymentWithInvoice(null, Date.now().toString());
@@ -1820,7 +1842,6 @@
             
             let confirmMessage = 'Delete this payment?';
             
-            // Add warning for cash pot or sent payments
             if (payment.status === 'in-pot' && payment.paymentMethod === 'cash' && payment.type === 'income') {
                 confirmMessage = `Delete this payment?\n\nThis will remove £${payment.amount.toFixed(2)} from the cash pot.`;
             } else if (payment.status === 'sent' && payment.paymentMethod === 'cash' && payment.type === 'expense') {
@@ -1836,7 +1857,6 @@
             saveToFirebase();
             updateUI();
             
-            // Show confirmation
             const statusEl = document.getElementById('syncStatus');
             const originalText = statusEl.querySelector('span').textContent;
             statusEl.querySelector('span').textContent = 'Deleted';
@@ -1855,25 +1875,20 @@
             const modalImage = document.getElementById('modalImage');
             const modalTitle = document.getElementById('imageModalTitle');
             
-            if (payment.invoice.type.includes('pdf')) {
-                const pdfData = payment.invoice.data;
-                const win = window.open('', '_blank');
-                win.document.write(`
-                    <iframe src="${pdfData}" 
-                            style="width:100%; height:100vh; border:none;" 
-                            title="${payment.invoice.name}">
-                    </iframe>
-                `);
-            } else {
-                // Use URL from Telegraph or fallback to base64 data
-                const imageSource = payment.invoice.url || payment.invoice.data;
-                if (imageSource) {
+            const imageSource = payment.invoice.url;
+            if (imageSource) {
+                const testImg = new Image();
+                testImg.onerror = function() {
+                    alert('Image no longer available online. It may have been deleted from cloud storage.');
+                };
+                testImg.onload = function() {
                     modalImage.src = imageSource;
                     modalTitle.textContent = payment.invoice.name || 'Invoice';
                     modal.classList.add('active');
-                } else {
-                    alert('Invoice image not found.');
-                }
+                };
+                testImg.src = imageSource;
+            } else {
+                alert('Invoice image not found or failed to upload.');
             }
         };
 
@@ -2179,31 +2194,6 @@
             return data;
         }
 
-        function extractFromFilename(filename) {
-            const data = {
-                amount: null,
-                description: null,
-                supplier: null,
-                date: null,
-                invoiceNumber: null
-            };
-            
-            const invoiceMatch = filename.match(/(?:invoice|inv|bill|INV|T0)[\s_-]*(\d+)/i);
-            if (invoiceMatch) {
-                data.invoiceNumber = invoiceMatch[1];
-                data.description = `Invoice #${data.invoiceNumber}`;
-            } else {
-                data.description = filename.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
-            }
-            
-            const dateMatch = filename.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
-            if (dateMatch) {
-                data.date = dateMatch[1].replace(/_/g, '-');
-            }
-            
-            return data;
-        }
-
         function displayExtractedData(data) {
             const container = document.getElementById('extractedData');
             let html = '';
@@ -2324,27 +2314,6 @@
                     
                     if (file.type.startsWith('image/')) {
                         await processInvoice(file);
-                    } else if (file.type === 'application/pdf') {
-                        const preview = document.getElementById('invoicePreview');
-                        const previewImage = document.getElementById('previewImage');
-                        if (preview && previewImage) {
-                            previewImage.style.display = 'none';
-                            preview.classList.add('active');
-                            
-                            const filenameData = extractFromFilename(fileName);
-                            
-                            document.getElementById('extractedData').innerHTML = `
-                                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                                    <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
-                                    <div style="font-weight: 600; margin-bottom: 8px;">PDF Uploaded</div>
-                                    <div style="font-size: 14px;">OCR only works with images. Fill in details manually or take a photo.</div>
-                                </div>
-                            `;
-                            
-                            if (filenameData.description || filenameData.invoiceNumber) {
-                                autoFillForm(filenameData);
-                            }
-                        }
                     }
                 });
                 uploadInput.dataset.listenerAttached = 'true';
