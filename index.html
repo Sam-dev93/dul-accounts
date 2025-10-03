@@ -994,8 +994,8 @@
                             <label class="file-upload-label" style="margin: 0; padding: 20px;">
                                 <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
                                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Upload File</div>
-                                <div style="font-size: 11px; color: var(--text-secondary);">Image Only</div>
-                                <input type="file" id="invoiceFileUpload" accept="image/*" style="display: none;">
+                                <div style="font-size: 11px; color: var(--text-secondary);">Image/PDF</div>
+                                <input type="file" id="invoiceFileUpload" accept="image/*,.pdf" style="display: none;">
                             </label>
                         </div>
                         <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;" id="invoiceFileName"></div>
@@ -1127,8 +1127,8 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Telegraph API endpoint
-        const TELEGRAPH_UPLOAD_URL = 'https://telegra.ph/upload';
+        // IndexedDB for local image storage
+        let imageDB;
 
         // Global variables
         window.payments = [];
@@ -1141,10 +1141,82 @@
         let uploadRetryCount = 0;
         const MAX_UPLOAD_RETRIES = 3;
 
+        // Initialize IndexedDB for images
+        function initImageDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('DULAccountsImages', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    imageDB = request.result;
+                    console.log('IndexedDB initialized');
+                    resolve(imageDB);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('invoices')) {
+                        db.createObjectStore('invoices', { keyPath: 'paymentId' });
+                    }
+                };
+            });
+        }
+
+        // Save image to IndexedDB
+        async function saveImageLocally(paymentId, imageBlob, fileName, fileType) {
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction(['invoices'], 'readwrite');
+                const store = transaction.objectStore('invoices');
+                
+                const imageData = {
+                    paymentId: paymentId,
+                    blob: imageBlob,
+                    fileName: fileName,
+                    fileType: fileType,
+                    savedAt: new Date().toISOString()
+                };
+                
+                const request = store.put(imageData);
+                request.onsuccess = () => {
+                    console.log('Image saved locally for payment:', paymentId);
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Get image from IndexedDB
+        async function getImageLocally(paymentId) {
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction(['invoices'], 'readonly');
+                const store = transaction.objectStore('invoices');
+                const request = store.get(paymentId);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Delete image from IndexedDB
+        async function deleteImageLocally(paymentId) {
+            return new Promise((resolve, reject) => {
+                const transaction = imageDB.transaction(['invoices'], 'readwrite');
+                const store = transaction.objectStore('invoices');
+                const request = store.delete(paymentId);
+                
+                request.onsuccess = () => {
+                    console.log('Image deleted locally for payment:', paymentId);
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('App starting...');
             
+            await initImageDB();
             loadLocalData();
             updateUI();
             setupFileInputs();
@@ -1321,9 +1393,6 @@
             } catch (error) {
                 console.error('Sync error:', error);
                 updateSyncStatus('offline');
-                if (error.message && error.message.includes('too large')) {
-                    alert(error.message);
-                }
             } finally {
                 isSyncing = false;
                 
@@ -1370,13 +1439,6 @@
                 } catch (error) {
                     console.error('Save error:', error);
                     
-                    if (error.message && error.message.includes('too large')) {
-                        updateSyncStatus('offline');
-                        isSyncing = false;
-                        alert(error.message);
-                        return;
-                    }
-                    
                     if (uploadRetryCount < MAX_UPLOAD_RETRIES) {
                         uploadRetryCount++;
                         console.log(`Retrying upload... (${uploadRetryCount}/${MAX_UPLOAD_RETRIES})`);
@@ -1395,30 +1457,22 @@
 
         async function uploadToFirebase() {
             console.log('Uploading to Firebase...');
-            const dataSize = JSON.stringify(window.payments).length;
+            
+            // Remove invoice data before syncing (images stay local)
+            const paymentsToSync = window.payments.map(p => {
+                const { invoice, ...paymentWithoutInvoice } = p;
+                return {
+                    ...paymentWithoutInvoice,
+                    hasInvoice: !!invoice
+                };
+            });
+            
+            const dataSize = JSON.stringify(paymentsToSync).length;
             const dataSizeMB = dataSize / 1024 / 1024;
             console.log(`Upload size: ${dataSizeMB.toFixed(2)} MB`);
             
-            // Firebase Firestore document size limit is 1MB
-            if (dataSizeMB > 0.95) {
-                console.error('Data too large for Firebase!', dataSizeMB.toFixed(2), 'MB');
-                
-                // Count payments with base64 images
-                const paymentsWithBase64 = window.payments.filter(p => p.invoice && p.invoice.data);
-                
-                if (paymentsWithBase64.length > 0) {
-                    throw new Error(
-                        `Cannot sync: Data too large (${dataSizeMB.toFixed(2)}MB). ` +
-                        `${paymentsWithBase64.length} payment(s) have images that failed cloud upload. ` +
-                        `Please retry uploading those images or remove them.`
-                    );
-                } else {
-                    throw new Error(`Cannot sync: Data too large (${dataSizeMB.toFixed(2)}MB)`);
-                }
-            }
-            
             await db.collection('payments').doc('shared').set({
-                payments: window.payments,
+                payments: paymentsToSync,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
                 userId: currentUser.uid
             });
@@ -1513,104 +1567,6 @@
             console.log('Sync status:', status);
         }
 
-        // SUPER AGGRESSIVE IMAGE COMPRESSION
-        async function compressImage(file, maxWidth = 400, quality = 0.4) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const img = new Image();
-                    
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        if (width > maxWidth) {
-                            height = (height * maxWidth) / width;
-                            width = maxWidth;
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        canvas.toBlob(
-                            (blob) => {
-                                const compressedFile = new File([blob], file.name, {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now()
-                                });
-                                
-                                const originalSize = (file.size / 1024).toFixed(2);
-                                const compressedSize = (compressedFile.size / 1024).toFixed(2);
-                                const reduction = ((1 - compressedFile.size / file.size) * 100).toFixed(0);
-                                
-                                console.log(`Image compressed: ${originalSize}KB -> ${compressedSize}KB (${reduction}% reduction)`);
-                                
-                                resolve(compressedFile);
-                            },
-                            'image/jpeg',
-                            quality
-                        );
-                    };
-                    
-                    img.onerror = reject;
-                    img.src = e.target.result;
-                };
-                
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // UPLOAD IMAGE TO TELEGRAPH WITH RETRY
-        async function uploadImageToTelegraph(file, retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    
-                    console.log(`Uploading to Telegraph (attempt ${i + 1}/${retries})...`);
-                    
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 15000);
-                    
-                    const response = await fetch(TELEGRAPH_UPLOAD_URL, {
-                        method: 'POST',
-                        body: formData,
-                        mode: 'cors',
-                        signal: controller.signal
-                    });
-                    
-                    clearTimeout(timeout);
-                    
-                    if (!response.ok) {
-                        throw new Error(`Telegraph upload failed: ${response.statusText}`);
-                    }
-                    
-                    const data = await response.json();
-                    
-                    if (data && data[0] && data[0].src) {
-                        const imageUrl = 'https://telegra.ph' + data[0].src;
-                        console.log('Image uploaded to Telegraph:', imageUrl);
-                        return imageUrl;
-                    } else {
-                        throw new Error('Invalid response from Telegraph');
-                    }
-                } catch (error) {
-                    console.error(`Telegraph upload attempt ${i + 1} failed:`, error);
-                    if (i === retries - 1) {
-                        console.error('All Telegraph upload attempts failed');
-                        throw error;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                }
-            }
-        }
-
         // Form handlers
         window.handleCategoryChange = function() {
             const category = document.getElementById('paymentCategory').value;
@@ -1695,76 +1651,30 @@
         window.addPayment = async function(event) {
             event.preventDefault();
             
+            const paymentId = Date.now().toString();
             const cameraFile = document.getElementById('invoiceFileCamera').files[0];
             const uploadFile = document.getElementById('invoiceFileUpload').files[0];
             let invoiceFile = cameraFile || uploadFile;
             
-            if (invoiceFile && invoiceFile.type.startsWith('image/')) {
-                const loadingOverlay = document.getElementById('loadingOverlay');
-                const loadingText = loadingOverlay.querySelector('.loading-text');
-                const loadingSubtext = loadingOverlay.querySelector('.loading-subtext');
-                
+            let hasInvoice = false;
+            
+            if (invoiceFile) {
                 try {
-                    loadingOverlay.classList.add('active');
-                    loadingText.textContent = 'Compressing Image...';
-                    loadingSubtext.textContent = 'Super compression for reliable upload';
-                    
-                    invoiceFile = await compressImage(invoiceFile, 400, 0.4);
-                    
-                    const sizeKB = invoiceFile.size / 1024;
-                    console.log(`Compressed image size: ${sizeKB.toFixed(2)}KB`);
-                    
-                    loadingText.textContent = 'Uploading Image...';
-                    loadingSubtext.textContent = 'Uploading to cloud storage';
-                    
-                    let invoiceData;
-                    
-                    try {
-                        const imageUrl = await uploadImageToTelegraph(invoiceFile, 3);
-                        invoiceData = {
-                            name: invoiceFile.name,
-                            type: invoiceFile.type,
-                            url: imageUrl,
-                            uploadedAt: new Date().toISOString(),
-                            size: invoiceFile.size
-                        };
-                        console.log('Using Telegraph URL for invoice');
-                    } catch (uploadError) {
-                        loadingOverlay.classList.remove('active');
-                        
-                        const useWithoutImage = confirm(
-                            'Failed to upload image to cloud storage after 3 attempts.\n\n' +
-                            'This may be due to network issues or Telegraph being unavailable.\n\n' +
-                            'Options:\n' +
-                            '- Click OK to save payment WITHOUT image\n' +
-                            '- Click Cancel to try again'
-                        );
-                        
-                        if (!useWithoutImage) {
-                            return;
-                        }
-                        
-                        invoiceData = null;
-                        console.log('Saving payment without image due to upload failure');
-                    }
-                    
-                    loadingOverlay.classList.remove('active');
-                    loadingText.textContent = 'Scanning Invoice...';
-                    loadingSubtext.textContent = 'Extracting data from image';
-                    
-                    savePaymentWithInvoice(invoiceData, Date.now().toString());
-                    
+                    // Save image locally to IndexedDB
+                    const blob = invoiceFile;
+                    await saveImageLocally(paymentId, blob, invoiceFile.name, invoiceFile.type);
+                    hasInvoice = true;
+                    console.log('Invoice saved locally');
                 } catch (error) {
-                    console.error('Image processing error:', error);
-                    loadingOverlay.classList.remove('active');
-                    alert('Failed to process image. Please try again or save without image.');
+                    console.error('Failed to save invoice locally:', error);
+                    alert('Failed to save invoice. Continuing without image.');
                 }
-            } else {
-                savePaymentWithInvoice(null, Date.now().toString());
             }
+            
+            savePaymentWithInvoice(hasInvoice, paymentId);
         };
 
-        function savePaymentWithInvoice(invoiceData, paymentId) {
+        function savePaymentWithInvoice(hasInvoice, paymentId) {
             const category = document.getElementById('paymentCategory').value;
             let type, paymentMethod;
             
@@ -1784,7 +1694,7 @@
                 type: type,
                 paymentMethod: paymentMethod,
                 notes: document.getElementById('paymentNotes').value,
-                invoice: invoiceData,
+                invoice: hasInvoice ? { stored: 'local' } : null,
                 status: 'pending',
                 createdAt: new Date().toISOString(),
                 date: new Date().toISOString().split('T')[0]
@@ -1836,7 +1746,7 @@
             }
         };
 
-        window.deletePayment = function(id) {
+        window.deletePayment = async function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (!payment) return;
             
@@ -1851,6 +1761,15 @@
             }
             
             if (!confirm(confirmMessage)) return;
+            
+            // Delete invoice from IndexedDB if it exists
+            if (payment.invoice) {
+                try {
+                    await deleteImageLocally(payment.id);
+                } catch (error) {
+                    console.error('Failed to delete invoice:', error);
+                }
+            }
             
             window.payments = window.payments.filter(p => p.id !== id);
             saveLocalData();
@@ -1867,28 +1786,40 @@
             }, 2000);
         };
 
-        window.viewInvoice = function(id) {
+        window.viewInvoice = async function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (!payment || !payment.invoice) return;
             
-            const modal = document.getElementById('imageModal');
-            const modalImage = document.getElementById('modalImage');
-            const modalTitle = document.getElementById('imageModalTitle');
-            
-            const imageSource = payment.invoice.url;
-            if (imageSource) {
-                const testImg = new Image();
-                testImg.onerror = function() {
-                    alert('Image no longer available online. It may have been deleted from cloud storage.');
-                };
-                testImg.onload = function() {
-                    modalImage.src = imageSource;
-                    modalTitle.textContent = payment.invoice.name || 'Invoice';
+            try {
+                const imageData = await getImageLocally(payment.id);
+                if (!imageData) {
+                    alert('Invoice not found locally.');
+                    return;
+                }
+                
+                const modal = document.getElementById('imageModal');
+                const modalImage = document.getElementById('modalImage');
+                const modalTitle = document.getElementById('imageModalTitle');
+                
+                if (imageData.fileType.includes('pdf')) {
+                    const blob = imageData.blob;
+                    const url = URL.createObjectURL(blob);
+                    const win = window.open('', '_blank');
+                    win.document.write(`
+                        <iframe src="${url}" 
+                                style="width:100%; height:100vh; border:none;" 
+                                title="${imageData.fileName}">
+                        </iframe>
+                    `);
+                } else {
+                    const url = URL.createObjectURL(imageData.blob);
+                    modalImage.src = url;
+                    modalTitle.textContent = imageData.fileName || 'Invoice';
                     modal.classList.add('active');
-                };
-                testImg.src = imageSource;
-            } else {
-                alert('Invoice image not found or failed to upload.');
+                }
+            } catch (error) {
+                console.error('Error loading invoice:', error);
+                alert('Failed to load invoice image.');
             }
         };
 
@@ -1972,7 +1903,7 @@
             }
             
             const invoiceButton = payment.invoice ? 
-                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📄 Invoice</button>` : '';
+                `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📄 View Invoice</button>` : '';
             
             return `
                 <div class="payment-card">
@@ -2314,6 +2245,21 @@
                     
                     if (file.type.startsWith('image/')) {
                         await processInvoice(file);
+                    } else if (file.type === 'application/pdf') {
+                        const preview = document.getElementById('invoicePreview');
+                        const previewImage = document.getElementById('previewImage');
+                        if (preview && previewImage) {
+                            previewImage.style.display = 'none';
+                            preview.classList.add('active');
+                            
+                            document.getElementById('extractedData').innerHTML = `
+                                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                                    <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+                                    <div style="font-weight: 600; margin-bottom: 8px;">PDF Uploaded</div>
+                                    <div style="font-size: 14px;">PDF will be saved locally. OCR only works with images.</div>
+                                </div>
+                            `;
+                        }
                     }
                 });
                 uploadInput.dataset.listenerAttached = 'true';
