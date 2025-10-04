@@ -1325,7 +1325,17 @@
                             
                             if (!doc.metadata.fromCache && data && data.payments) {
                                 console.log('Updating from server data');
-                                window.payments = data.payments;
+                                // Restore invoice references for payments that have local images
+                                const mergedPayments = data.payments.map(serverPayment => {
+                                    if (serverPayment.hasInvoice) {
+                                        return {
+                                            ...serverPayment,
+                                            invoice: { stored: 'local' }
+                                        };
+                                    }
+                                    return serverPayment;
+                                });
+                                window.payments = mergedPayments;
                                 saveLocalData();
                                 updateUI();
                             }
@@ -1381,7 +1391,17 @@
                     const remoteData = doc.data();
                     if (remoteData && remoteData.payments) {
                         console.log('Using server data');
-                        window.payments = remoteData.payments;
+                        // Restore invoice references for payments that have local images
+                        const mergedPayments = remoteData.payments.map(serverPayment => {
+                            if (serverPayment.hasInvoice) {
+                                return {
+                                    ...serverPayment,
+                                    invoice: { stored: 'local' }
+                                };
+                            }
+                            return serverPayment;
+                        });
+                        window.payments = mergedPayments;
                         saveLocalData();
                         updateUI();
                     }
@@ -1458,11 +1478,11 @@
         async function uploadToFirebase() {
             console.log('Uploading to Firebase...');
             
-            // Remove invoice data before syncing (images stay local)
+            // Keep hasInvoice flag, remove actual invoice data
             const paymentsToSync = window.payments.map(p => {
-                const { invoice, ...paymentWithoutInvoice } = p;
+                const { invoice, ...rest } = p;
                 return {
-                    ...paymentWithoutInvoice,
+                    ...rest,
                     hasInvoice: !!invoice
                 };
             });
@@ -1902,7 +1922,9 @@
                 `;
             }
             
-            const invoiceButton = payment.invoice ? 
+            // Show invoice button if payment has invoice OR hasInvoice flag
+            const hasInvoice = payment.invoice || payment.hasInvoice;
+            const invoiceButton = hasInvoice ? 
                 `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📄 View Invoice</button>` : '';
             
             return `
