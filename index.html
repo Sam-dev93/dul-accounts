@@ -942,7 +942,7 @@
 </head>
 <body>
 <div class="app-container">
-    <div id="appLoading" class="loading">
+    <div id="appLoading" class="loading" style="display: none;">
         <div class="spinner"></div>
         <div style="color: var(--text-primary); font-size: 18px; font-weight: 600;">Loading student data...</div>
         <div style="color: var(--text-secondary); font-size: 14px; margin-top: 8px;">Please wait...</div>
@@ -1509,11 +1509,6 @@
         appId: "1:484339552499:web:1dff66886e1627a178a786"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
     // Global variables
     let currentUser = null;
     let currentTerm = 'term1';
@@ -1531,7 +1526,7 @@
     window.term1Students = [];
     window.term2Students = [];
 
-    // FIXED: Core calculation functions
+    // Core calculation functions
     function getTotalPaid(student) {
         const payments = student.payments || [];
         return payments.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
@@ -1582,24 +1577,27 @@
         return 'None';
     }
 
-    // Initialize app
-    document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize app - FIXED to show UI immediately
+    document.addEventListener('DOMContentLoaded', function() {
         console.log('Student Fees App starting...');
         
         try {
-            // IMMEDIATELY hide loading to show interface
+            // IMMEDIATELY show the main interface
             const loadingEl = document.getElementById('appLoading');
             if (loadingEl) {
                 loadingEl.style.display = 'none';
-                console.log('Loading hidden immediately on DOM ready');
+                console.log('Loading hidden immediately');
             }
             
+            // Initialize with empty/local data first
             loadLocalData();
             updateAllUI();
             setupSearchFilters();
             setupFileUpload();
             
-            // Initialize Firebase in background (don't block UI)
+            console.log('UI initialized with local data');
+            
+            // Initialize Firebase in background (non-blocking)
             setTimeout(() => {
                 initFirebase().catch(error => {
                     console.error('Firebase initialization failed:', error);
@@ -1609,15 +1607,12 @@
             
             setupNetworkMonitoring();
             
-            console.log('App initialized successfully');
         } catch (error) {
             console.error('App initialization error:', error);
-            
-            // FORCE hide loading even if there's an error
+            // Always ensure loading is hidden
             const loadingEl = document.getElementById('appLoading');
             if (loadingEl) {
                 loadingEl.style.display = 'none';
-                console.log('Loading hidden after initialization error');
             }
         }
     });
@@ -1626,12 +1621,21 @@
         try {
             console.log('Initializing Firebase...');
             
+            // Initialize Firebase with error handling
+            if (typeof firebase === 'undefined') {
+                throw new Error('Firebase not loaded');
+            }
+            
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+            
+            // Set up persistence with error handling
             try {
                 await db.enablePersistence({ synchronizeTabs: true });
                 console.log('Persistence enabled');
             } catch (err) {
                 console.warn('Persistence error:', err.code);
-                // Continue without persistence
             }
 
             await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -1646,7 +1650,7 @@
                 }
             });
             
-            // Don't wait for authentication - let it happen in background
+            // Try to sign in (non-blocking)
             if (!auth.currentUser) {
                 signInUser().catch(error => {
                     console.error('Sign in failed:', error);
@@ -1665,6 +1669,7 @@
     async function signInUser() {
         try {
             console.log('Attempting sign in...');
+            const auth = firebase.auth();
             const credential = await auth.signInAnonymously();
             currentUser = credential.user;
             console.log('Signed in successfully:', currentUser.uid);
@@ -1709,6 +1714,8 @@
 
     function setupRealtimeSync() {
         console.log('Setting up realtime sync...');
+        
+        const db = firebase.firestore();
         
         // Term 1 listener
         unsubscribeTerm1 = db.collection('studentFees')
@@ -1764,6 +1771,47 @@
             );
     }
 
+    async function syncFromFirebase() {
+        if (!currentUser || !isOnline || isSyncing) return;
+        
+        isSyncing = true;
+        updateSyncStatus('syncing');
+        
+        try {
+            console.log('Syncing from Firebase...');
+            
+            const db = firebase.firestore();
+            
+            // Get Term 1 data
+            const term1Doc = await db.collection('studentFees').doc('term1_2025_2026').get({ source: 'server' });
+            if (term1Doc.exists) {
+                const data = term1Doc.data();
+                if (data && data.students) {
+                    window.term1Students = data.students;
+                }
+            }
+            
+            // Get Term 2 data
+            const term2Doc = await db.collection('studentFees').doc('term2_2025_2026').get({ source: 'server' });
+            if (term2Doc.exists) {
+                const data = term2Doc.data();
+                if (data && data.students) {
+                    window.term2Students = data.students;
+                }
+            }
+            
+            saveLocalData();
+            updateAllUI();
+            updateSyncStatus('synced');
+            console.log('Sync completed successfully');
+        } catch (error) {
+            console.error('Sync error:', error);
+            updateSyncStatus('offline');
+        } finally {
+            isSyncing = false;
+        }
+    }
+
     async function saveToFirebase(term) {
         if (!currentUser || !isOnline || isSyncing) {
             console.log('Cannot save: no user, offline, or syncing');
@@ -1777,6 +1825,8 @@
         try {
             const students = term === 'term1' ? window.term1Students : window.term2Students;
             const docId = term === 'term1' ? 'term1_2025_2026' : 'term2_2025_2026';
+            
+            const db = firebase.firestore();
             
             // Clean the data to remove undefined values
             const cleanStudents = students.map(student => {
@@ -1807,35 +1857,6 @@
             console.error(`Error saving ${term}:`, error);
             updateSyncStatus('offline');
             isSyncing = false;
-        }
-    }
-        
-        isSyncing = true;
-        updateSyncStatus('syncing');
-        
-        try {
-            const students = term === 'term1' ? window.term1Students : window.term2Students;
-            const docId = term === 'term1' ? 'term1_2025_2026' : 'term2_2025_2026';
-            
-            await db.collection('studentFees').doc(docId).set({
-                students: students,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                userId: currentUser.uid,
-                term: term,
-                academicYear: '2025-2026'
-            });
-            
-            console.log(`${term} saved to Firebase successfully`);
-            
-            setTimeout(() => {
-                updateSyncStatus('synced');
-                isSyncing = false;
-            }, 1000);
-        } catch (error) {
-            console.error(`Error saving ${term}:`, error);
-            updateSyncStatus('offline');
-            isSyncing = false;
-            alert('Failed to sync. Your data is saved locally and will sync when connection improves.');
         }
     }
 
@@ -1983,13 +2004,6 @@
         try {
             console.log('Updating all UI...');
             
-            // FORCE hide loading immediately
-            const loadingEl = document.getElementById('appLoading');
-            if (loadingEl) {
-                loadingEl.style.display = 'none';
-                console.log('Loading screen forcibly hidden');
-            }
-            
             updateTermStats('term1');
             updateTermStats('term2');
             updateOverviewStats();
@@ -1999,13 +2013,6 @@
             console.log('UI updated successfully');
         } catch (error) {
             console.error('Error updating UI:', error);
-            
-            // ALWAYS hide loading even on error
-            const loadingEl = document.getElementById('appLoading');
-            if (loadingEl) {
-                loadingEl.style.display = 'none';
-                console.log('Loading screen hidden after error');
-            }
         }
     }
 
@@ -3102,7 +3109,7 @@
     function addSummaryStats(doc, students, scope) {
         let yPos = 50;
         
-        // Calculate statistics - FIXED to use correct property names
+        // Calculate statistics
         const totalStudents = students.length;
         const activeStudents = students.filter(s => s.studentStatus !== 'left').length;
         const totalFees = students.reduce((sum, s) => sum + (parseFloat(s.setFee) || 0) + (parseFloat(s.vat) || 0), 0);
@@ -3188,7 +3195,7 @@
         });
     }
 
-    // Missing analytics function
+    // Analytics function
     function updateAnalytics() {
         const allStudents = [...window.term1Students, ...window.term2Students];
         const activeStudents = allStudents.filter(s => s.studentStatus !== 'left');
