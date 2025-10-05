@@ -1764,45 +1764,6 @@
             );
     }
 
-    async function syncFromFirebase() {
-        if (!currentUser || !isOnline || isSyncing) return;
-        
-        isSyncing = true;
-        updateSyncStatus('syncing');
-        
-        try {
-            console.log('Syncing from Firebase...');
-            
-            // Get Term 1 data
-            const term1Doc = await db.collection('studentFees').doc('term1_2025_2026').get({ source: 'server' });
-            if (term1Doc.exists) {
-                const data = term1Doc.data();
-                if (data && data.students) {
-                    window.term1Students = data.students;
-                }
-            }
-            
-            // Get Term 2 data
-            const term2Doc = await db.collection('studentFees').doc('term2_2025_2026').get({ source: 'server' });
-            if (term2Doc.exists) {
-                const data = term2Doc.data();
-                if (data && data.students) {
-                    window.term2Students = data.students;
-                }
-            }
-            
-            saveLocalData();
-            updateAllUI();
-            updateSyncStatus('synced');
-            console.log('Sync completed successfully');
-        } catch (error) {
-            console.error('Sync error:', error);
-            updateSyncStatus('offline');
-        } finally {
-            isSyncing = false;
-        }
-    }
-
     async function saveToFirebase(term) {
         if (!currentUser || !isOnline || isSyncing) {
             console.log('Cannot save: no user, offline, or syncing');
