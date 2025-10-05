@@ -2,10 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#10A37F">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Fees Tracker</title>
 
 <!-- Firebase SDKs -->
@@ -13,22 +10,16 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<!-- PDF Generation Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
 <style>
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
     }
 
     :root {
         --primary: #10A37F;
         --primary-dark: #0D7A5F;
-        --primary-light: #D1FAE5;
         --success: #34C759;
         --warning: #FF9500;
         --danger: #FF3B30;
@@ -39,8 +30,6 @@
         --text-secondary: #98989D;
         --border: #38383A;
         --shadow: rgba(0, 0, 0, 0.3);
-        --term1-color: #34C759;
-        --term2-color: #AF52DE;
     }
 
     @media (prefers-color-scheme: light) {
@@ -55,45 +44,25 @@
         }
     }
 
-    html {
-        height: 100vh;
-        height: -webkit-fill-available;
-    }
-
     body {
         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
         background: var(--background);
         color: var(--text-primary);
         height: 100vh;
-        height: -webkit-fill-available;
         overflow: hidden;
-        position: relative;
     }
 
     .app-container {
         display: flex;
         flex-direction: column;
         height: 100vh;
-        height: -webkit-fill-available;
-        position: relative;
     }
 
     .header {
         background: var(--card-bg);
-        padding: calc(env(safe-area-inset-top, 0px) + 16px) 24px 24px;
-        position: relative;
-        z-index: 100;
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        background: rgba(28, 28, 30, 0.72);
-        border-bottom: 0.5px solid var(--border);
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
         flex-shrink: 0;
-    }
-
-    @media (prefers-color-scheme: light) {
-        .header {
-            background: rgba(242, 242, 247, 0.8);
-        }
     }
 
     .header-content {
@@ -105,10 +74,8 @@
     }
 
     .header h1 {
-        font-size: 38px;
+        font-size: 32px;
         font-weight: 700;
-        letter-spacing: -1px;
-        margin-bottom: 8px;
         background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -119,18 +86,15 @@
         background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         color: white;
         padding: 8px 16px;
-        border-radius: 20px;
+        border-radius: 16px;
         font-size: 14px;
         font-weight: 600;
-        box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
     }
 
     .nav-tabs {
         background: var(--card-bg);
-        border-bottom: 0.5px solid var(--border);
+        border-bottom: 1px solid var(--border);
         padding: 0 24px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
 
     .nav-tabs-inner {
@@ -149,29 +113,17 @@
         cursor: pointer;
         border-radius: 12px 12px 0 0;
         transition: all 0.3s;
-        white-space: nowrap;
         font-size: 16px;
-        position: relative;
     }
 
     .nav-tab.active {
         color: var(--primary);
         background: var(--card-bg-elevated);
-        transform: translateY(-2px);
-    }
-
-    .nav-tab.term1.active {
-        color: var(--term1-color);
-    }
-
-    .nav-tab.term2.active {
-        color: var(--term2-color);
     }
 
     .view-content {
         flex: 1;
         overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
         padding: 24px;
         min-height: 0;
     }
@@ -198,8 +150,8 @@
     }
 
     .stat-card {
-        background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-bg-elevated) 100%);
-        border-radius: 20px;
+        background: var(--card-bg);
+        border-radius: 16px;
         padding: 24px;
         box-shadow: 0 4px 16px var(--shadow);
         border: 1px solid var(--border);
@@ -214,13 +166,12 @@
         top: 0;
         bottom: 0;
         width: 4px;
-        background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background: var(--primary);
     }
 
-    .stat-card.total::before { background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%); }
-    .stat-card.paid::before { background: linear-gradient(180deg, var(--success) 0%, #28A745 100%); }
-    .stat-card.partial::before { background: linear-gradient(180deg, var(--warning) 0%, #E67E22 100%); }
-    .stat-card.outstanding::before { background: linear-gradient(180deg, var(--danger) 0%, #DC3545 100%); }
+    .stat-card.paid::before { background: var(--success); }
+    .stat-card.partial::before { background: var(--warning); }
+    .stat-card.outstanding::before { background: var(--danger); }
 
     .stat-card .label {
         font-size: 14px;
@@ -232,22 +183,21 @@
     }
 
     .stat-card .value {
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 700;
-        letter-spacing: -1px;
         margin-bottom: 8px;
+        color: var(--primary);
     }
+
+    .stat-card.paid .value { color: var(--success); }
+    .stat-card.partial .value { color: var(--warning); }
+    .stat-card.outstanding .value { color: var(--danger); }
 
     .stat-card .description {
         font-size: 14px;
         color: var(--text-secondary);
         line-height: 1.4;
     }
-
-    .stat-card.total .value { color: var(--primary); }
-    .stat-card.paid .value { color: var(--success); }
-    .stat-card.partial .value { color: var(--warning); }
-    .stat-card.outstanding .value { color: var(--danger); }
 
     .controls {
         display: flex;
@@ -261,45 +211,34 @@
         flex: 1;
         min-width: 320px;
         padding: 16px 20px;
-        border: 1.5px solid var(--border);
-        border-radius: 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         background: var(--card-bg-elevated);
         color: var(--text-primary);
         font-size: 16px;
         font-family: inherit;
-        transition: all 0.2s;
     }
 
     .search-box:focus {
         outline: none;
         border-color: var(--primary);
-        background: var(--card-bg);
-        box-shadow: 0 0 0 4px rgba(16, 163, 127, 0.1);
     }
 
     .filter-select {
         padding: 16px 20px;
-        border: 1.5px solid var(--border);
-        border-radius: 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         background: var(--card-bg-elevated);
         color: var(--text-primary);
         font-size: 16px;
         font-family: inherit;
-        transition: all 0.2s;
         min-width: 180px;
-    }
-
-    .filter-select:focus {
-        outline: none;
-        border-color: var(--primary);
-        background: var(--card-bg);
-        box-shadow: 0 0 0 4px rgba(16, 163, 127, 0.1);
     }
 
     .btn {
         padding: 16px 24px;
         border: none;
-        border-radius: 14px;
+        border-radius: 12px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
@@ -310,14 +249,9 @@
         font-family: inherit;
     }
 
-    .btn:active {
-        transform: scale(0.98);
-    }
-
     .btn-primary {
         background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         color: white;
-        box-shadow: 0 4px 16px rgba(16, 163, 127, 0.3);
     }
 
     .btn-secondary {
@@ -327,20 +261,19 @@
     }
 
     .btn-sm {
-        padding: 10px 16px;
+        padding: 8px 16px;
         font-size: 14px;
-        border-radius: 10px;
+        border-radius: 8px;
     }
 
     .btn-danger {
         background: var(--danger);
         color: white;
-        border: 1px solid var(--danger);
     }
 
     .table-container {
         background: var(--card-bg);
-        border-radius: 20px;
+        border-radius: 16px;
         border: 1px solid var(--border);
         overflow: hidden;
         box-shadow: 0 4px 16px var(--shadow);
@@ -348,7 +281,6 @@
 
     .table-wrapper {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
 
     .table {
@@ -410,12 +342,6 @@
         border: 1px solid rgba(255, 59, 48, 0.3);
     }
 
-    .payment-status.left {
-        background: rgba(128, 128, 128, 0.2);
-        color: #808080;
-        border: 1px solid rgba(128, 128, 128, 0.3);
-    }
-
     .payment-status .dot {
         width: 6px;
         height: 6px;
@@ -432,36 +358,24 @@
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
         z-index: 2000;
-        animation: fadeIn 0.3s;
         align-items: center;
         justify-content: center;
         padding: 20px;
     }
 
     .modal.active {
-        display: flex !important;
+        display: flex;
     }
 
     .modal-content {
         background: var(--card-bg);
-        border-radius: 24px;
+        border-radius: 20px;
         padding: 32px;
         width: 100%;
         max-width: 700px;
         max-height: 90vh;
         overflow-y: auto;
-        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideUp {
-        from { transform: translateY(100px) scale(0.95); opacity: 0; }
-        to { transform: translateY(0) scale(1); opacity: 1; }
     }
 
     .modal-header {
@@ -472,38 +386,32 @@
     }
 
     .modal-header h2 {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 700;
-        letter-spacing: -0.5px;
     }
 
     .close-btn {
         background: var(--card-bg-elevated);
         border: 1px solid var(--border);
-        width: 36px;
-        height: 36px;
-        border-radius: 18px;
-        font-size: 20px;
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        font-size: 18px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         color: var(--text-secondary);
-        transition: all 0.2s;
-    }
-
-    .close-btn:active {
-        transform: scale(0.9);
     }
 
     .form-group {
-        margin-bottom: 24px;
+        margin-bottom: 20px;
     }
 
     .form-label {
         display: block;
         font-weight: 600;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         color: var(--text-secondary);
         font-size: 14px;
         text-transform: uppercase;
@@ -514,18 +422,17 @@
     .form-select,
     .form-textarea {
         width: 100%;
-        padding: 16px 18px;
-        border: 1.5px solid var(--border);
-        border-radius: 14px;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         background: var(--card-bg-elevated);
         color: var(--text-primary);
-        font-size: 17px;
+        font-size: 16px;
         font-family: inherit;
-        transition: all 0.2s;
     }
 
     .form-textarea {
-        min-height: 120px;
+        min-height: 100px;
         resize: vertical;
     }
 
@@ -534,8 +441,6 @@
     .form-textarea:focus {
         outline: none;
         border-color: var(--primary);
-        background: var(--card-bg);
-        box-shadow: 0 0 0 4px rgba(16, 163, 127, 0.1);
     }
 
     .form-grid {
@@ -545,15 +450,15 @@
     }
 
     .payments-section {
-        margin-top: 32px;
+        margin-top: 24px;
         padding-top: 24px;
         border-top: 1px solid var(--border);
     }
 
     .payments-section h3 {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         color: var(--text-primary);
     }
 
@@ -562,9 +467,9 @@
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 16px;
         align-items: end;
-        padding: 20px;
+        padding: 16px;
         background: var(--card-bg-elevated);
-        border-radius: 16px;
+        border-radius: 12px;
         margin-bottom: 16px;
         border: 1px solid var(--border);
         position: relative;
@@ -589,34 +494,34 @@
 
     .empty-state {
         text-align: center;
-        padding: 80px 20px;
+        padding: 60px 20px;
         color: var(--text-secondary);
     }
 
     .empty-state .icon {
-        font-size: 60px;
+        font-size: 48px;
         margin-bottom: 16px;
         opacity: 0.4;
     }
 
     .empty-state .title {
-        font-size: 20px;
-        font-weight: 700;
+        font-size: 18px;
+        font-weight: 600;
         margin-bottom: 8px;
     }
 
     .empty-state .subtitle {
-        font-size: 16px;
+        font-size: 14px;
         line-height: 1.5;
     }
 
     .fab {
         position: fixed;
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+        bottom: 24px;
         right: 24px;
-        width: 60px;
-        height: 60px;
-        border-radius: 30px;
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
         background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         box-shadow: 0 8px 24px rgba(16, 163, 127, 0.4);
         border: none;
@@ -625,26 +530,18 @@
         align-items: center;
         justify-content: center;
         z-index: 999;
-        transition: transform 0.2s;
-    }
-
-    .fab:active {
-        transform: scale(0.92);
-    }
-
-    .fab svg {
-        width: 28px;
-        height: 28px;
-        stroke: white;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
     }
 
     .sync-status {
         position: fixed;
-        top: calc(env(safe-area-inset-top, 0px) + 12px);
+        top: 16px;
         right: 20px;
         background: var(--card-bg);
         border: 1px solid var(--border);
-        border-radius: 20px;
+        border-radius: 16px;
         padding: 6px 12px;
         font-size: 11px;
         font-weight: 600;
@@ -666,48 +563,18 @@
         background: currentColor;
     }
 
-    .sync-dot.syncing {
-        animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
-    }
-
-    .sibling-discount {
-        background: var(--card-bg-elevated);
-        border-radius: 16px;
-        padding: 20px;
-        margin-top: 20px;
-        border: 1px solid var(--border);
-    }
-
-    .sibling-discount h4 {
-        font-size: 16px;
-        font-weight: 700;
-        margin-bottom: 16px;
-        color: var(--text-primary);
-    }
-
-    .sibling-discount-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 16px;
-    }
-
     .student-status-section {
         background: var(--card-bg-elevated);
-        border-radius: 16px;
-        padding: 20px;
-        margin-top: 20px;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
         border: 1px solid var(--border);
     }
 
     .student-status-section h4 {
         font-size: 16px;
-        font-weight: 700;
-        margin-bottom: 16px;
+        font-weight: 600;
+        margin-bottom: 12px;
         color: var(--text-primary);
     }
 
@@ -715,12 +582,12 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
     .status-option input[type="radio"] {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         accent-color: var(--primary);
     }
 
@@ -733,11 +600,11 @@
     /* Mobile Optimizations */
     @media (max-width: 768px) {
         .header {
-            padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 16px;
+            padding: 12px 16px;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 24px;
         }
 
         .view-content {
@@ -747,7 +614,6 @@
         .stats-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
-            margin-bottom: 24px;
         }
 
         .stat-card {
@@ -788,21 +654,14 @@
         .modal-content {
             padding: 24px;
             margin: 16px;
-            border-radius: 20px;
+            border-radius: 16px;
         }
 
         .fab {
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+            bottom: 16px;
             right: 16px;
-            width: 56px;
-            height: 56px;
-        }
-    }
-
-    /* Desktop-specific optimizations */
-    @media (min-width: 1200px) {
-        .stats-grid {
-            grid-template-columns: repeat(4, 1fr);
+            width: 52px;
+            height: 52px;
         }
     }
 </style>
@@ -818,7 +677,7 @@
         <div class="header-content">
             <div>
                 <h1>Student Fees</h1>
-                <div style="font-size: 17px; color: var(--text-secondary); font-weight: 500;">Fee Management System</div>
+                <div style="font-size: 16px; color: var(--text-secondary); font-weight: 500;">Fee Management System</div>
             </div>
             <div class="year-badge">2025-2026</div>
         </div>
@@ -826,8 +685,8 @@
 
     <nav class="nav-tabs">
         <div class="nav-tabs-inner">
-            <button class="nav-tab term1 active" onclick="switchView('term1')">Term 1</button>
-            <button class="nav-tab term2" onclick="switchView('term2')">Term 2</button>
+            <button class="nav-tab active" onclick="switchView('term1')">Term 1</button>
+            <button class="nav-tab" onclick="switchView('term2')">Term 2</button>
             <button class="nav-tab" onclick="switchView('overview')">Overview</button>
         </div>
     </nav>
@@ -866,8 +725,6 @@
                         <option value="paid">Fully Paid</option>
                         <option value="partial">Partially Paid</option>
                         <option value="unpaid">Unpaid</option>
-                        <option value="active">Active Students</option>
-                        <option value="left">Left Students</option>
                         <option value="outstanding">Outstanding Only</option>
                     </select>
                 </div>
@@ -886,14 +743,12 @@
                                     <th>Total Paid</th>
                                     <th>Outstanding</th>
                                     <th>Status</th>
-                                    <th>Student Status</th>
-                                    <th>Discount</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="term1StudentsTable">
                                 <tr>
-                                    <td colspan="12">
+                                    <td colspan="10">
                                         <div class="empty-state">
                                             <div class="icon">🎓</div>
                                             <div class="title">No students added yet</div>
@@ -939,8 +794,6 @@
                         <option value="paid">Fully Paid</option>
                         <option value="partial">Partially Paid</option>
                         <option value="unpaid">Unpaid</option>
-                        <option value="active">Active Students</option>
-                        <option value="left">Left Students</option>
                         <option value="outstanding">Outstanding Only</option>
                     </select>
                 </div>
@@ -959,14 +812,12 @@
                                     <th>Total Paid</th>
                                     <th>Outstanding</th>
                                     <th>Status</th>
-                                    <th>Student Status</th>
-                                    <th>Discount</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="term2StudentsTable">
                                 <tr>
-                                    <td colspan="12">
+                                    <td colspan="10">
                                         <div class="empty-state">
                                             <div class="icon">🎓</div>
                                             <div class="title">No students added yet</div>
@@ -1004,58 +855,11 @@
                         <div class="description">Fees collected</div>
                     </div>
                 </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-top: 32px;">
-                    <div class="table-container">
-                        <div style="padding: 20px; border-bottom: 1px solid var(--border); background: var(--card-bg-elevated);">
-                            <h3 style="color: var(--term1-color); font-weight: 700; font-size: 18px;">Term 1 Summary</h3>
-                        </div>
-                        <div id="term1Summary" style="padding: 20px;">
-                            <div style="margin-bottom: 12px;">
-                                <div style="color: var(--text-secondary); font-size: 14px;">Students enrolled</div>
-                                <div style="font-size: 24px; font-weight: 700; color: var(--term1-color);" id="term1SummaryCount">0</div>
-                            </div>
-                            <div style="margin-bottom: 12px;">
-                                <div style="color: var(--text-secondary); font-size: 14px;">Total fees set</div>
-                                <div style="font-size: 20px; font-weight: 600;" id="term1SummaryFees">£0</div>
-                            </div>
-                            <div>
-                                <div style="color: var(--text-secondary); font-size: 14px;">Outstanding</div>
-                                <div style="font-size: 20px; font-weight: 600; color: var(--danger);" id="term1SummaryOutstanding">£0</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="table-container">
-                        <div style="padding: 20px; border-bottom: 1px solid var(--border); background: var(--card-bg-elevated);">
-                            <h3 style="color: var(--term2-color); font-weight: 700; font-size: 18px;">Term 2 Summary</h3>
-                        </div>
-                        <div id="term2Summary" style="padding: 20px;">
-                            <div style="margin-bottom: 12px;">
-                                <div style="color: var(--text-secondary); font-size: 14px;">Students enrolled</div>
-                                <div style="font-size: 24px; font-weight: 700; color: var(--term2-color);" id="term2SummaryCount">0</div>
-                            </div>
-                            <div style="margin-bottom: 12px;">
-                                <div style="color: var(--text-secondary); font-size: 14px;">Total fees set</div>
-                                <div style="font-size: 20px; font-weight: 600;" id="term2SummaryFees">£0</div>
-                            </div>
-                            <div>
-                                <div style="color: var(--text-secondary); font-size: 14px;">Outstanding</div>
-                                <div style="font-size: 20px; font-weight: 600; color: var(--danger);" id="term2SummaryOutstanding">£0</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
 
-    <button class="fab" onclick="showAddStudent()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>
+    <button class="fab" onclick="showAddStudent()">+</button>
 
     <!-- Add/Edit Student Modal -->
     <div id="studentModal" class="modal">
@@ -1112,28 +916,6 @@
                     </div>
                 </div>
 
-                <div class="sibling-discount">
-                    <h4>Sibling Discount</h4>
-                    <div class="sibling-discount-grid">
-                        <div class="form-group">
-                            <label class="form-label">Discount Type</label>
-                            <select class="form-select" id="discountType">
-                                <option value="none">No Discount</option>
-                                <option value="percentage">Percentage</option>
-                                <option value="fixed">Fixed Amount</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Discount Value</label>
-                            <input type="number" step="0.01" class="form-input" id="discountValue" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Sibling Names</label>
-                            <input type="text" class="form-input" id="siblingNames" placeholder="Names of siblings">
-                        </div>
-                    </div>
-                </div>
-
                 <div class="payments-section">
                     <h3>Payments</h3>
                     <div id="paymentsContainer">
@@ -1141,10 +923,6 @@
                             <div class="form-group">
                                 <label class="form-label">Amount (£)</label>
                                 <input type="number" step="0.01" class="form-input" name="paymentAmount[]">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Invoice No.</label>
-                                <input type="text" class="form-input" name="paymentInvoice[]">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Date</label>
@@ -1162,9 +940,7 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentEntry()">
-                        + Add Payment
-                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentEntry()">+ Add Payment</button>
                 </div>
 
                 <div class="form-group">
@@ -1172,7 +948,7 @@
                     <textarea class="form-input form-textarea" id="studentComments" placeholder="Any additional notes..."></textarea>
                 </div>
 
-                <div style="display: flex; gap: 16px; justify-content: flex-end; margin-top: 32px;">
+                <div style="display: flex; gap: 16px; justify-content: flex-end; margin-top: 24px;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('studentModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Student</button>
                 </div>
@@ -1182,6 +958,8 @@
 </div>
 
 <script>
+    console.log('Starting Student Fees App...');
+
     // Firebase configuration
     var firebaseConfig = {
         apiKey: "AIzaSyC-AM7-3HdvjRpJMDVQLfxUsZmgh1aA8UU",
@@ -1197,48 +975,41 @@
     var currentTerm = 'term1';
     var currentStudentId = null;
     var isOnline = navigator.onLine;
-    var isSyncing = false;
     var firebaseReady = false;
     var auth = null;
     var db = null;
 
-    // Data storage - immediately available
-    var term1Students = JSON.parse(localStorage.getItem('dulTerm1Students') || '[]');
-    var term2Students = JSON.parse(localStorage.getItem('dulTerm2Students') || '[]');
+    // Data storage - load immediately from localStorage
+    var term1Students = [];
+    var term2Students = [];
+
+    try {
+        var stored1 = localStorage.getItem('dulTerm1Students');
+        var stored2 = localStorage.getItem('dulTerm2Students');
+        if (stored1) term1Students = JSON.parse(stored1);
+        if (stored2) term2Students = JSON.parse(stored2);
+    } catch (e) {
+        console.warn('Error loading local data:', e);
+    }
 
     // Core calculation functions
     function getTotalPaid(student) {
         var payments = student.payments || [];
-        return payments.reduce(function(sum, payment) {
-            return sum + (parseFloat(payment.amount) || 0);
-        }, 0);
-    }
-
-    function calculateDiscount(student) {
-        if (!student.discount || student.discount.type === 'none') return 0;
-        
-        var totalFee = (parseFloat(student.setFee) || 0) + (parseFloat(student.vat) || 0);
-        var discountValue = parseFloat(student.discount.value) || 0;
-        
-        if (student.discount.type === 'percentage') {
-            return (totalFee * discountValue) / 100;
-        } else if (student.discount.type === 'fixed') {
-            return Math.min(discountValue, totalFee);
+        var total = 0;
+        for (var i = 0; i < payments.length; i++) {
+            total += parseFloat(payments[i].amount) || 0;
         }
-        
-        return 0;
+        return total;
     }
 
-    function getOutstandingAmount(student, term) {
+    function getOutstandingAmount(student) {
         var totalFee = (parseFloat(student.setFee) || 0) + (parseFloat(student.vat) || 0);
-        var discount = calculateDiscount(student);
-        var discountedFee = totalFee - discount;
         var totalPaid = getTotalPaid(student);
-        return Math.max(0, discountedFee - totalPaid);
+        return Math.max(0, totalFee - totalPaid);
     }
 
-    function getPaymentStatus(student, term) {
-        var outstanding = getOutstandingAmount(student, term);
+    function getPaymentStatus(student) {
+        var outstanding = getOutstandingAmount(student);
         var totalPaid = getTotalPaid(student);
         
         if (outstanding === 0) return 'paid';
@@ -1246,23 +1017,10 @@
         return 'unpaid';
     }
 
-    function getDiscountText(student) {
-        if (!student.discount || student.discount.type === 'none') return 'None';
-        
-        var discount = calculateDiscount(student);
-        if (student.discount.type === 'percentage') {
-            return student.discount.value + '% (£' + discount.toFixed(2) + ')';
-        } else if (student.discount.type === 'fixed') {
-            return '£' + discount.toFixed(2);
-        }
-        
-        return 'None';
-    }
-
-    // Initialize Firebase in background
+    // Firebase functions
     function initFirebase() {
         if (typeof firebase === 'undefined') {
-            console.warn('Firebase not loaded, running offline only');
+            console.warn('Firebase not loaded');
             updateSyncStatus('offline');
             return;
         }
@@ -1272,23 +1030,21 @@
             auth = firebase.auth();
             db = firebase.firestore();
             
-            // Enable persistence silently
-            db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+            // Enable persistence quietly
+            db.enablePersistence().catch(function(err) {
                 console.warn('Persistence error:', err.code);
             });
 
-            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function() {
-                auth.onAuthStateChanged(function(user) {
-                    if (user) {
-                        currentUser = user;
-                        console.log('User authenticated:', user.uid);
-                        firebaseReady = true;
-                        updateSyncStatus('synced');
-                        syncFromFirebase();
-                    } else {
-                        signInUser();
-                    }
-                });
+            // Sign in anonymously
+            auth.signInAnonymously().then(function(result) {
+                currentUser = result.user;
+                firebaseReady = true;
+                console.log('Firebase ready');
+                updateSyncStatus('synced');
+                syncFromFirebase();
+            }).catch(function(error) {
+                console.error('Auth error:', error);
+                updateSyncStatus('offline');
             });
 
         } catch (error) {
@@ -1297,22 +1053,8 @@
         }
     }
 
-    function signInUser() {
-        if (!auth) return;
-        
-        auth.signInAnonymously().then(function(credential) {
-            currentUser = credential.user;
-            firebaseReady = true;
-            console.log('Signed in:', currentUser.uid);
-            updateSyncStatus('synced');
-        }).catch(function(error) {
-            console.error('Sign in error:', error);
-            updateSyncStatus('offline');
-        });
-    }
-
     function syncFromFirebase() {
-        if (!firebaseReady || !db || !currentUser) return;
+        if (!firebaseReady || !db) return;
         
         updateSyncStatus('syncing');
         
@@ -1348,7 +1090,7 @@
     }
 
     function saveToFirebase(term) {
-        if (!firebaseReady || !db || !currentUser) {
+        if (!firebaseReady || !db) {
             console.log('Firebase not ready, saving locally only');
             return;
         }
@@ -1361,7 +1103,7 @@
         db.collection('studentFees').doc(docId).set({
             students: students,
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-            userId: currentUser.uid,
+            userId: currentUser ? currentUser.uid : 'offline',
             term: term,
             academicYear: '2025-2026'
         }).then(function() {
@@ -1400,43 +1142,36 @@
     // UI Functions
     function switchView(view) {
         // Update active tab
-        document.querySelectorAll('.nav-tab').forEach(function(tab) {
-            tab.classList.remove('active');
-        });
-        
-        // Find and activate the correct nav item
-        var navTabs = document.querySelectorAll('.nav-tab');
-        navTabs.forEach(function(tab) {
-            var onclick = tab.getAttribute('onclick');
+        var tabs = document.querySelectorAll('.nav-tab');
+        for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.remove('active');
+            var onclick = tabs[i].getAttribute('onclick');
             if (onclick && onclick.includes("'" + view + "'")) {
-                tab.classList.add('active');
+                tabs[i].classList.add('active');
             }
-        });
-        
-        // Update active view
-        document.querySelectorAll('.view').forEach(function(v) {
-            v.classList.remove('active');
-        });
-        
-        // Handle view mapping
-        var targetView = view;
-        if (view === 'term1') {
-            targetView = 'term1View';
-            currentTerm = 'term1';
-        } else if (view === 'term2') {
-            targetView = 'term2View';
-            currentTerm = 'term2';
-        } else if (view === 'overview') {
-            targetView = 'overviewView';
         }
         
+        // Update active view
+        var views = document.querySelectorAll('.view');
+        for (var i = 0; i < views.length; i++) {
+            views[i].classList.remove('active');
+        }
+        
+        var targetView = view + 'View';
         var targetElement = document.getElementById(targetView);
         if (targetElement) {
             targetElement.classList.add('active');
         }
+        
+        if (view === 'term1') {
+            currentTerm = 'term1';
+        } else if (view === 'term2') {
+            currentTerm = 'term2';
+        }
     }
 
     function updateAllUI() {
+        console.log('Updating UI...');
         updateTermStats('term1');
         updateTermStats('term2');
         updateOverviewStats();
@@ -1446,22 +1181,24 @@
 
     function updateTermStats(term) {
         var students = term === 'term1' ? term1Students : term2Students;
-        var activeStudents = students.filter(function(s) {
-            return s.studentStatus !== 'left';
-        });
         
-        var totalStudents = activeStudents.length;
-        var fullyPaid = activeStudents.filter(function(s) {
-            return getOutstandingAmount(s, term) === 0;
-        }).length;
-        var partiallyPaid = activeStudents.filter(function(s) {
-            var paid = getTotalPaid(s);
-            var outstanding = getOutstandingAmount(s, term);
-            return paid > 0 && outstanding > 0;
-        }).length;
-        var totalOutstanding = activeStudents.reduce(function(sum, s) {
-            return sum + getOutstandingAmount(s, term);
-        }, 0);
+        var totalStudents = students.length;
+        var fullyPaid = 0;
+        var partiallyPaid = 0;
+        var totalOutstanding = 0;
+        
+        for (var i = 0; i < students.length; i++) {
+            var outstanding = getOutstandingAmount(students[i]);
+            var paid = getTotalPaid(students[i]);
+            
+            if (outstanding === 0) {
+                fullyPaid++;
+            } else if (paid > 0) {
+                partiallyPaid++;
+            }
+            
+            totalOutstanding += outstanding;
+        }
         
         var totalEl = document.getElementById(term + 'TotalStudents');
         var fullyPaidEl = document.getElementById(term + 'FullyPaid');
@@ -1476,28 +1213,18 @@
 
     function updateOverviewStats() {
         var allStudents = term1Students.concat(term2Students);
-        var activeStudents = allStudents.filter(function(s) {
-            return s.studentStatus !== 'left';
-        });
+        var totalStudents = allStudents.length;
+        var totalRevenue = 0;
+        var totalOutstanding = 0;
+        var totalFees = 0;
         
-        var uniqueStudents = {};
-        activeStudents.forEach(function(student) {
-            var key = student.firstName + '_' + student.lastName + '_' + student.dob;
-            if (!uniqueStudents[key]) {
-                uniqueStudents[key] = student;
-            }
-        });
+        for (var i = 0; i < allStudents.length; i++) {
+            var student = allStudents[i];
+            totalRevenue += getTotalPaid(student);
+            totalOutstanding += getOutstandingAmount(student);
+            totalFees += (parseFloat(student.setFee) || 0) + (parseFloat(student.vat) || 0);
+        }
         
-        var totalStudents = Object.keys(uniqueStudents).length;
-        var totalRevenue = activeStudents.reduce(function(sum, s) {
-            return sum + getTotalPaid(s);
-        }, 0);
-        var totalOutstanding = activeStudents.reduce(function(sum, s) {
-            return sum + getOutstandingAmount(s, s.term || 'term1');
-        }, 0);
-        var totalFees = activeStudents.reduce(function(sum, s) {
-            return sum + (parseFloat(s.setFee) || 0) + (parseFloat(s.vat) || 0);
-        }, 0);
         var collectionRate = totalFees > 0 ? (totalRevenue / totalFees * 100) : 0;
         
         var overviewTotalStudentsEl = document.getElementById('overviewTotalStudents');
@@ -1509,43 +1236,6 @@
         if (overviewTotalRevenueEl) overviewTotalRevenueEl.textContent = '£' + totalRevenue.toFixed(2);
         if (overviewTotalOutstandingEl) overviewTotalOutstandingEl.textContent = '£' + totalOutstanding.toFixed(2);
         if (overviewCollectionRateEl) overviewCollectionRateEl.textContent = collectionRate.toFixed(1) + '%';
-        
-        // Update term summaries
-        var term1ActiveStudents = term1Students.filter(function(s) {
-            return s.studentStatus !== 'left';
-        });
-        var term1TotalFees = term1ActiveStudents.reduce(function(sum, s) {
-            return sum + (parseFloat(s.setFee) || 0) + (parseFloat(s.vat) || 0);
-        }, 0);
-        var term1Outstanding = term1ActiveStudents.reduce(function(sum, s) {
-            return sum + getOutstandingAmount(s, 'term1');
-        }, 0);
-        
-        var term1SummaryCountEl = document.getElementById('term1SummaryCount');
-        var term1SummaryFeesEl = document.getElementById('term1SummaryFees');
-        var term1SummaryOutstandingEl = document.getElementById('term1SummaryOutstanding');
-        
-        if (term1SummaryCountEl) term1SummaryCountEl.textContent = term1ActiveStudents.length;
-        if (term1SummaryFeesEl) term1SummaryFeesEl.textContent = '£' + term1TotalFees.toFixed(2);
-        if (term1SummaryOutstandingEl) term1SummaryOutstandingEl.textContent = '£' + term1Outstanding.toFixed(2);
-        
-        var term2ActiveStudents = term2Students.filter(function(s) {
-            return s.studentStatus !== 'left';
-        });
-        var term2TotalFees = term2ActiveStudents.reduce(function(sum, s) {
-            return sum + (parseFloat(s.setFee) || 0) + (parseFloat(s.vat) || 0);
-        }, 0);
-        var term2Outstanding = term2ActiveStudents.reduce(function(sum, s) {
-            return sum + getOutstandingAmount(s, 'term2');
-        }, 0);
-        
-        var term2SummaryCountEl = document.getElementById('term2SummaryCount');
-        var term2SummaryFeesEl = document.getElementById('term2SummaryFees');
-        var term2SummaryOutstandingEl = document.getElementById('term2SummaryOutstanding');
-        
-        if (term2SummaryCountEl) term2SummaryCountEl.textContent = term2ActiveStudents.length;
-        if (term2SummaryFeesEl) term2SummaryFeesEl.textContent = '£' + term2TotalFees.toFixed(2);
-        if (term2SummaryOutstandingEl) term2SummaryOutstandingEl.textContent = '£' + term2Outstanding.toFixed(2);
     }
 
     function renderStudentsTable(term) {
@@ -1555,20 +1245,20 @@
         if (!tableBody) return;
         
         if (students.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><div class="icon">🎓</div><div class="title">No students added yet</div><div class="subtitle">Click the + button to add your first student</div></div></td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">🎓</div><div class="title">No students added yet</div><div class="subtitle">Click the + button to add your first student</div></div></td></tr>';
             return;
         }
         
         var html = '';
-        students.forEach(function(student, index) {
+        for (var i = 0; i < students.length; i++) {
+            var student = students[i];
             var totalPaid = getTotalPaid(student);
-            var outstanding = getOutstandingAmount(student, term);
-            var status = getPaymentStatus(student, term);
-            var discountText = getDiscountText(student);
+            var outstanding = getOutstandingAmount(student);
+            var status = getPaymentStatus(student);
             var studentStatus = student.studentStatus || 'active';
             
-            html += '<tr style="' + (studentStatus === 'left' ? 'opacity: 0.6;' : '') + '">';
-            html += '<td>' + (index + 1) + '</td>';
+            html += '<tr>';
+            html += '<td>' + (i + 1) + '</td>';
             html += '<td>' + student.firstName + ' ' + student.lastName + '</td>';
             html += '<td>' + new Date(student.dob).toLocaleDateString('en-GB') + '</td>';
             html += '<td>Year ' + student.year + '</td>';
@@ -1576,15 +1266,13 @@
             html += '<td>£' + (parseFloat(student.vat) || 0).toFixed(2) + '</td>';
             html += '<td>£' + totalPaid.toFixed(2) + '</td>';
             html += '<td>£' + outstanding.toFixed(2) + '</td>';
-            html += '<td><span class="payment-status ' + (studentStatus === 'left' ? 'left' : status) + '"><span class="dot"></span>' + (studentStatus === 'left' ? 'Left' : status.charAt(0).toUpperCase() + status.slice(1)) + '</span></td>';
-            html += '<td><span class="payment-status ' + studentStatus + '">' + (studentStatus === 'left' ? '📤 Left' : '✅ Active') + '</span></td>';
-            html += '<td>' + discountText + '</td>';
+            html += '<td><span class="payment-status ' + status + '"><span class="dot"></span>' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
             html += '<td>';
-            html += '<button class="btn btn-secondary btn-sm" onclick="editStudent(\'' + student.id + '\', \'' + term + '\')">Edit</button>';
-            html += '<button class="btn btn-danger btn-sm" onclick="deleteStudent(\'' + student.id + '\', \'' + term + '\')" style="margin-left: 8px;">Delete</button>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="editStudent(\'' + student.id + '\', \'' + term + '\')">Edit</button> ';
+            html += '<button class="btn btn-danger btn-sm" onclick="deleteStudent(\'' + student.id + '\', \'' + term + '\')">Delete</button>';
             html += '</td>';
             html += '</tr>';
-        });
+        }
         
         tableBody.innerHTML = html;
     }
@@ -1595,15 +1283,13 @@
         
         if (term1Search) {
             term1Search.addEventListener('input', function(e) {
-                var filterEl = document.getElementById('term1Filter');
-                filterStudents('term1', e.target.value, filterEl ? filterEl.value : 'all');
+                filterStudents('term1', e.target.value, 'all');
             });
         }
         
         if (term2Search) {
             term2Search.addEventListener('input', function(e) {
-                var filterEl = document.getElementById('term2Filter');
-                filterStudents('term2', e.target.value, filterEl ? filterEl.value : 'all');
+                filterStudents('term2', e.target.value, 'all');
             });
         }
     }
@@ -1622,13 +1308,13 @@
         
         var rows = table.querySelectorAll('tr');
         
-        rows.forEach(function(row) {
-            if (row.querySelector('.empty-state')) return;
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row.querySelector('.empty-state')) continue;
             
             var name = row.children[1] ? row.children[1].textContent.toLowerCase() : '';
             var year = row.children[3] ? row.children[3].textContent.toLowerCase() : '';
             var status = row.children[8] ? row.children[8].textContent.toLowerCase() : '';
-            var studentStatus = row.children[9] ? row.children[9].textContent.toLowerCase() : '';
             
             // Search filter
             var matchesSearch = name.includes(searchTerm.toLowerCase()) || 
@@ -1647,23 +1333,15 @@
                     case 'unpaid':
                         matchesFilter = status.includes('unpaid');
                         break;
-                    case 'active':
-                        matchesFilter = studentStatus.includes('active');
-                        break;
-                    case 'left':
-                        matchesFilter = studentStatus.includes('left');
-                        break;
                     case 'outstanding':
                         var outstanding = parseFloat(row.children[7] ? row.children[7].textContent.replace('£', '') : '0');
                         matchesFilter = outstanding > 0;
                         break;
-                    default:
-                        matchesFilter = true;
                 }
             }
             
             row.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
-        });
+        }
     }
 
     // Modal Functions
@@ -1696,9 +1374,14 @@
 
     function editStudent(studentId, term) {
         var students = term === 'term1' ? term1Students : term2Students;
-        var student = students.find(function(s) {
-            return s.id === studentId;
-        });
+        var student = null;
+        
+        for (var i = 0; i < students.length; i++) {
+            if (students[i].id === studentId) {
+                student = students[i];
+                break;
+            }
+        }
         
         if (!student) return;
         
@@ -1711,21 +1394,13 @@
         }
         
         // Fill form fields
-        var studentFirstName = document.getElementById('studentFirstName');
-        var studentLastName = document.getElementById('studentLastName');
-        var studentDOB = document.getElementById('studentDOB');
-        var studentYear = document.getElementById('studentYear');
-        var studentFee = document.getElementById('studentFee');
-        var studentVAT = document.getElementById('studentVAT');
-        var studentComments = document.getElementById('studentComments');
-        
-        if (studentFirstName) studentFirstName.value = student.firstName || '';
-        if (studentLastName) studentLastName.value = student.lastName || '';
-        if (studentDOB) studentDOB.value = student.dob || '';
-        if (studentYear) studentYear.value = student.year || '';
-        if (studentFee) studentFee.value = student.setFee || 0;
-        if (studentVAT) studentVAT.value = student.vat || 0;
-        if (studentComments) studentComments.value = student.comments || '';
+        document.getElementById('studentFirstName').value = student.firstName || '';
+        document.getElementById('studentLastName').value = student.lastName || '';
+        document.getElementById('studentDOB').value = student.dob || '';
+        document.getElementById('studentYear').value = student.year || '';
+        document.getElementById('studentFee').value = student.setFee || 0;
+        document.getElementById('studentVAT').value = student.vat || 0;
+        document.getElementById('studentComments').value = student.comments || '';
         
         // Set student status
         var studentStatus = student.studentStatus || 'active';
@@ -1734,41 +1409,26 @@
             statusRadio.checked = true;
         }
         
-        // Fill discount
-        if (student.discount) {
-            var discountType = document.getElementById('discountType');
-            var discountValue = document.getElementById('discountValue');
-            var siblingNames = document.getElementById('siblingNames');
-            
-            if (discountType) discountType.value = student.discount.type || 'none';
-            if (discountValue) discountValue.value = student.discount.value || 0;
-            if (siblingNames) siblingNames.value = student.discount.siblingNames || '';
-        }
-        
         // Fill payments
         resetPaymentsContainer();
         if (student.payments && student.payments.length > 0) {
-            student.payments.forEach(function(payment, index) {
-                if (index > 0) addPaymentEntry();
+            for (var i = 0; i < student.payments.length; i++) {
+                if (i > 0) addPaymentEntry();
                 
                 var container = document.getElementById('paymentsContainer');
-                if (container) {
-                    var entries = container.querySelectorAll('.payment-entry');
-                    var entry = entries[index];
+                var entries = container.querySelectorAll('.payment-entry');
+                var entry = entries[i];
+                
+                if (entry) {
+                    var amountInput = entry.querySelector('input[name="paymentAmount[]"]');
+                    var dateInput = entry.querySelector('input[name="paymentDate[]"]');
+                    var methodSelect = entry.querySelector('select[name="paymentMethod[]"]');
                     
-                    if (entry) {
-                        var amountInput = entry.querySelector('input[name="paymentAmount[]"]');
-                        var invoiceInput = entry.querySelector('input[name="paymentInvoice[]"]');
-                        var dateInput = entry.querySelector('input[name="paymentDate[]"]');
-                        var methodSelect = entry.querySelector('select[name="paymentMethod[]"]');
-                        
-                        if (amountInput) amountInput.value = payment.amount || '';
-                        if (invoiceInput) invoiceInput.value = payment.invoice || '';
-                        if (dateInput) dateInput.value = payment.date || '';
-                        if (methodSelect) methodSelect.value = payment.method || '';
-                    }
+                    if (amountInput) amountInput.value = student.payments[i].amount || '';
+                    if (dateInput) dateInput.value = student.payments[i].date || '';
+                    if (methodSelect) methodSelect.value = student.payments[i].method || '';
                 }
-            });
+            }
         }
         
         var modal = document.getElementById('studentModal');
@@ -1779,25 +1439,26 @@
 
     function deleteStudent(studentId, term) {
         var students = term === 'term1' ? term1Students : term2Students;
-        var student = students.find(function(s) {
-            return s.id === studentId;
-        });
+        var student = null;
+        
+        for (var i = 0; i < students.length; i++) {
+            if (students[i].id === studentId) {
+                student = students[i];
+                break;
+            }
+        }
         
         if (!student) return;
         
-        if (!confirm('Are you sure you want to permanently delete ' + student.firstName + ' ' + student.lastName + '? This action cannot be undone.')) {
+        if (!confirm('Are you sure you want to permanently delete ' + student.firstName + ' ' + student.lastName + '?')) {
             return;
         }
         
         if (term === 'term1') {
-            term1Students = term1Students.filter(function(s) {
-                return s.id !== studentId;
-            });
+            term1Students = term1Students.filter(function(s) { return s.id !== studentId; });
             localStorage.setItem('dulTerm1Students', JSON.stringify(term1Students));
         } else {
-            term2Students = term2Students.filter(function(s) {
-                return s.id !== studentId;
-            });
+            term2Students = term2Students.filter(function(s) { return s.id !== studentId; });
             localStorage.setItem('dulTerm2Students', JSON.stringify(term2Students));
         }
         
@@ -1818,9 +1479,9 @@
         
         var newEntry = document.createElement('div');
         newEntry.className = 'payment-entry';
-        newEntry.innerHTML = '<button type="button" class="delete-payment" onclick="removePaymentEntry(this)">×</button>' +
+        newEntry.innerHTML = 
+            '<button type="button" class="delete-payment" onclick="removePaymentEntry(this)">×</button>' +
             '<div class="form-group"><label class="form-label">Amount (£)</label><input type="number" step="0.01" class="form-input" name="paymentAmount[]"></div>' +
-            '<div class="form-group"><label class="form-label">Invoice No.</label><input type="text" class="form-input" name="paymentInvoice[]"></div>' +
             '<div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" name="paymentDate[]"></div>' +
             '<div class="form-group"><label class="form-label">Method</label><select class="form-select" name="paymentMethod[]">' +
             '<option value="">Select Method</option><option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option>' +
@@ -1832,14 +1493,14 @@
         var entry = button.closest('.payment-entry');
         var container = document.getElementById('paymentsContainer');
         
-        // Don't remove if it's the only payment entry
         if (container.querySelectorAll('.payment-entry').length > 1) {
             entry.remove();
         } else {
             // Clear the fields instead
-            entry.querySelectorAll('input, select').forEach(function(field) {
-                field.value = '';
-            });
+            var inputs = entry.querySelectorAll('input, select');
+            for (var i = 0; i < inputs.length; i++) {
+                inputs[i].value = '';
+            }
         }
     }
 
@@ -1847,9 +1508,9 @@
         var container = document.getElementById('paymentsContainer');
         if (!container) return;
         
-        container.innerHTML = '<div class="payment-entry">' +
+        container.innerHTML = 
+            '<div class="payment-entry">' +
             '<div class="form-group"><label class="form-label">Amount (£)</label><input type="number" step="0.01" class="form-input" name="paymentAmount[]"></div>' +
-            '<div class="form-group"><label class="form-label">Invoice No.</label><input type="text" class="form-input" name="paymentInvoice[]"></div>' +
             '<div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" name="paymentDate[]"></div>' +
             '<div class="form-group"><label class="form-label">Method</label><select class="form-select" name="paymentMethod[]">' +
             '<option value="">Select Method</option><option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option>' +
@@ -1862,11 +1523,12 @@
         // Get student status from radio buttons
         var statusRadios = document.querySelectorAll('input[name="studentStatus"]');
         var studentStatus = 'active';
-        statusRadios.forEach(function(radio) {
-            if (radio.checked) {
-                studentStatus = radio.value;
+        for (var i = 0; i < statusRadios.length; i++) {
+            if (statusRadios[i].checked) {
+                studentStatus = statusRadios[i].value;
+                break;
             }
-        });
+        }
         
         var studentData = {
             id: currentStudentId || Date.now().toString(),
@@ -1878,11 +1540,6 @@
             vat: parseFloat(document.getElementById('studentVAT').value) || 0,
             comments: document.getElementById('studentComments').value || '',
             studentStatus: studentStatus,
-            discount: {
-                type: document.getElementById('discountType').value || 'none',
-                value: parseFloat(document.getElementById('discountValue').value) || 0,
-                siblingNames: document.getElementById('siblingNames').value || ''
-            },
             payments: [],
             term: currentTerm,
             createdAt: currentStudentId ? undefined : new Date().toISOString(),
@@ -1891,7 +1548,6 @@
 
         // Collect payments
         var amountInputs = document.querySelectorAll('input[name="paymentAmount[]"]');
-        var invoiceInputs = document.querySelectorAll('input[name="paymentInvoice[]"]');
         var dateInputs = document.querySelectorAll('input[name="paymentDate[]"]');
         var methodSelects = document.querySelectorAll('select[name="paymentMethod[]"]');
 
@@ -1900,7 +1556,6 @@
             if (amount && amount > 0) {
                 studentData.payments.push({
                     amount: amount,
-                    invoice: invoiceInputs[i].value,
                     date: dateInputs[i].value,
                     method: methodSelects[i].value
                 });
@@ -1910,11 +1565,11 @@
         // Save to appropriate term
         if (currentTerm === 'term1') {
             if (currentStudentId) {
-                var index = term1Students.findIndex(function(s) {
-                    return s.id === currentStudentId;
-                });
-                if (index !== -1) {
-                    term1Students[index] = studentData;
+                for (var i = 0; i < term1Students.length; i++) {
+                    if (term1Students[i].id === currentStudentId) {
+                        term1Students[i] = studentData;
+                        break;
+                    }
                 }
             } else {
                 term1Students.push(studentData);
@@ -1922,11 +1577,11 @@
             localStorage.setItem('dulTerm1Students', JSON.stringify(term1Students));
         } else {
             if (currentStudentId) {
-                var index = term2Students.findIndex(function(s) {
-                    return s.id === currentStudentId;
-                });
-                if (index !== -1) {
-                    term2Students[index] = studentData;
+                for (var i = 0; i < term2Students.length; i++) {
+                    if (term2Students[i].id === currentStudentId) {
+                        term2Students[i] = studentData;
+                        break;
+                    }
                 }
             } else {
                 term2Students.push(studentData);
@@ -1939,33 +1594,19 @@
         closeModal('studentModal');
     }
 
-    // Initialize app immediately when DOM is ready
+    // Initialize app when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Student Fees App loading...');
+        console.log('DOM ready, initializing app...');
         
-        // Show UI immediately
+        // Show UI immediately with existing data
         updateAllUI();
         setupSearchFilters();
         
-        // Initialize Firebase in background after a short delay
+        // Initialize Firebase in background
         setTimeout(function() {
+            console.log('Initializing Firebase...');
             initFirebase();
-        }, 500);
-        
-        // Setup network monitoring
-        window.addEventListener('online', function() {
-            isOnline = true;
-            if (firebaseReady) {
-                syncFromFirebase();
-            } else {
-                initFirebase();
-            }
-        });
-
-        window.addEventListener('offline', function() {
-            isOnline = false;
-            updateSyncStatus('offline');
-        });
+        }, 1000);
         
         console.log('App initialized successfully');
     });
@@ -1980,6 +1621,8 @@
     window.removePaymentEntry = removePaymentEntry;
     window.saveStudent = saveStudent;
     window.applyFilter = applyFilter;
+
+    console.log('Script loaded successfully');
 </script>
 </body>
 </html>
