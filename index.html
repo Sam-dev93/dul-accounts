@@ -1458,11 +1458,11 @@
         async function uploadToFirebase() {
             console.log('Uploading to Firebase...');
             
-            // Remove invoice data before syncing (images stay local)
+            // Keep hasInvoice flag, remove actual invoice data
             const paymentsToSync = window.payments.map(p => {
-                const { invoice, ...paymentWithoutInvoice } = p;
+                const { invoice, ...rest } = p;
                 return {
-                    ...paymentWithoutInvoice,
+                    ...rest,
                     hasInvoice: !!invoice
                 };
             });
