@@ -1388,7 +1388,16 @@
                             
                             if (!doc.metadata.fromCache && data && data.payments) {
                                 console.log('Updating from server data');
-                                window.payments = data.payments;
+                                // Preserve local invoice data when syncing from server
+                                const updatedPayments = data.payments.map(serverPayment => {
+                                    const localPayment = window.payments.find(p => p.id === serverPayment.id);
+                                    if (localPayment && localPayment.invoice && serverPayment.invoice?.hasLocal) {
+                                        // Keep the local invoice data
+                                        return { ...serverPayment, invoice: localPayment.invoice };
+                                    }
+                                    return serverPayment;
+                                });
+                                window.payments = updatedPayments;
                                 saveLocalData();
                                 updateUI();
                             }
@@ -1974,34 +1983,33 @@
             
             let actions = '';
             
-            // Show action buttons based on status (not just home view)
-            if (payment.status === 'pending' && !isHomeView) {
-                actions = `
-                    <div class="payment-actions">
-                        <button class="btn btn-approve" onclick="approvePayment('${payment.id}')">Approve</button>
-                        <button class="btn btn-delete" onclick="deletePayment('${payment.id}')">Delete</button>
-                    </div>
-                `;
-            } else if (payment.status === 'approved' && !isHomeView) {
-                actions = `
-                    <div class="payment-actions">
-                        <button class="btn btn-send" onclick="markAsSent('${payment.id}')">Mark Sent</button>
-                        <button class="btn btn-secondary" onclick="deletePayment('${payment.id}')">Delete</button>
-                    </div>
-                `;
-            } else if ((payment.status === 'sent' || payment.status === 'in-pot') && !isHomeView) {
-                actions = `
-                    <div class="payment-actions" style="justify-content: flex-end; margin-top: 8px;">
-                        <button class="btn-bin" onclick="deletePayment('${payment.id}')" title="Delete">🗑️</button>
-                    </div>
-                `;
+            // Show action buttons based on status (but hide for home view)
+            if (!isHomeView) {
+                if (payment.status === 'pending') {
+                    actions = `
+                        <div class="payment-actions">
+                            <button class="btn btn-approve" onclick="approvePayment('${payment.id}')">Approve</button>
+                            <button class="btn btn-delete" onclick="deletePayment('${payment.id}')">Delete</button>
+                        </div>
+                    `;
+                } else if (payment.status === 'approved') {
+                    actions = `
+                        <div class="payment-actions">
+                            <button class="btn btn-send" onclick="markAsSent('${payment.id}')">Mark Sent</button>
+                            <button class="btn btn-secondary" onclick="deletePayment('${payment.id}')">Delete</button>
+                        </div>
+                    `;
+                } else if (payment.status === 'sent' || payment.status === 'in-pot') {
+                    actions = `
+                        <div class="payment-actions" style="justify-content: flex-end; margin-top: 8px;">
+                            <button class="btn-bin" onclick="deletePayment('${payment.id}')" title="Delete">🗑️</button>
+                        </div>
+                    `;
+                }
             }
             
             const invoiceButton = payment.invoice ? 
                 `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📄 View Invoice</button>` : '';
-            
-            // Always show status badge but hide other meta on non-home views in specific tabs
-            const showMeta = isHomeView || true; // Always show for now
             
             return `
                 <div class="payment-card ${statusClass}">
@@ -2012,17 +2020,15 @@
                         </div>
                         <div class="payment-amount">£${payment.amount.toFixed(2)}</div>
                     </div>
-                    ${showMeta ? `
-                        <div class="payment-meta">
-                            <div class="payment-meta-item">
-                                ${payment.type === 'income' ? '↑' : '↓'} ${payment.type === 'income' ? 'In' : 'Out'}
-                            </div>
-                            <div class="payment-meta-item">
-                                ${methodIcon} ${payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
-                            </div>
-                            <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div class="payment-meta">
+                        <div class="payment-meta-item">
+                            ${payment.type === 'income' ? '↑' : '↓'} ${payment.type === 'income' ? 'In' : 'Out'}
                         </div>
-                    ` : ''}
+                        <div class="payment-meta-item">
+                            ${methodIcon} ${payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
+                        </div>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
                     ${payment.notes ? `<div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${payment.notes}</div>` : ''}
                     <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.3;">
                         ${dateHistory}
@@ -2066,7 +2072,7 @@
                 return;
             }
             
-            container.innerHTML = pending.map(renderPaymentCard).join('');
+            container.innerHTML = pending.map(payment => renderPaymentCard(payment, false)).join('');
         }
 
         function renderApprovedPayments() {
@@ -2084,7 +2090,7 @@
                 return;
             }
             
-            container.innerHTML = approved.map(renderPaymentCard).join('');
+            container.innerHTML = approved.map(payment => renderPaymentCard(payment, false)).join('');
         }
 
         function renderCashControl() {
@@ -2105,7 +2111,7 @@
                 return;
             }
             
-            container.innerHTML = cashPayments.map(renderPaymentCard).join('');
+            container.innerHTML = cashPayments.map(payment => renderPaymentCard(payment, false)).join('');
         }
 
         function renderSentPayments() {
@@ -2123,7 +2129,7 @@
                 return;
             }
             
-            container.innerHTML = sent.map(renderPaymentCard).join('');
+            container.innerHTML = sent.map(payment => renderPaymentCard(payment, false)).join('');
         }
 
         // OCR and file handling
