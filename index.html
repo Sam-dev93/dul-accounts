@@ -1478,12 +1478,14 @@
         async function uploadToFirebase() {
             console.log('Uploading to Firebase...');
             
-            // Keep hasInvoice flag, remove actual invoice data
+            // Keep hasInvoice flag, remove actual invoice data but preserve the flag
             const paymentsToSync = window.payments.map(p => {
                 const { invoice, ...rest } = p;
                 return {
                     ...rest,
-                    hasInvoice: !!invoice
+                    hasInvoice: !!invoice,
+                    // Keep a simple invoice flag for Firebase
+                    invoice: invoice ? { hasLocal: true } : null
                 };
             });
             
