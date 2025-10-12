@@ -345,6 +345,26 @@
             border: 1px solid var(--border);
         }
 
+        .btn-bin {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            opacity: 0.7;
+        }
+
+        .btn-bin:hover {
+            background: rgba(255, 59, 48, 0.1);
+            opacity: 1;
+        }
+
+        .btn-bin:active {
+            transform: scale(0.9);
+        }
+
         .btn-view {
             width: 100%;
             padding: 6px;
@@ -1909,10 +1929,10 @@
             }
         }
 
-        function renderPaymentCard(payment) {
+        function renderPaymentCard(payment, isHomeView = false) {
             const statusClass = `status-${payment.status}`;
             let statusText = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
-            if (payment.status === 'in-pot') statusText = 'In Pot';
+            if (payment.status === 'in-pot') statusText = 'Cash Pot';
             
             const methodIcon = payment.paymentMethod === 'cash' ? '💵' : 
                               payment.paymentMethod === 'cheque' ? '📝' : '🏦';
@@ -1930,26 +1950,30 @@
             }
             
             let actions = '';
-            if (payment.status === 'pending') {
-                actions = `
-                    <div class="payment-actions">
-                        <button class="btn btn-approve" onclick="approvePayment('${payment.id}')">Approve</button>
-                        <button class="btn btn-delete" onclick="deletePayment('${payment.id}')">Delete</button>
-                    </div>
-                `;
-            } else if (payment.status === 'approved') {
-                actions = `
-                    <div class="payment-actions">
-                        <button class="btn btn-send" onclick="markAsSent('${payment.id}')">Mark Sent</button>
-                        <button class="btn btn-secondary" onclick="deletePayment('${payment.id}')">Delete</button>
-                    </div>
-                `;
-            } else if (payment.status === 'sent' || payment.status === 'in-pot') {
-                actions = `
-                    <div class="payment-actions">
-                        <button class="btn btn-delete" onclick="deletePayment('${payment.id}')">Delete</button>
-                    </div>
-                `;
+            
+            // Only show action buttons if NOT on home view
+            if (!isHomeView) {
+                if (payment.status === 'pending') {
+                    actions = `
+                        <div class="payment-actions">
+                            <button class="btn btn-approve" onclick="approvePayment('${payment.id}')">Approve</button>
+                            <button class="btn btn-delete" onclick="deletePayment('${payment.id}')">Delete</button>
+                        </div>
+                    `;
+                } else if (payment.status === 'approved') {
+                    actions = `
+                        <div class="payment-actions">
+                            <button class="btn btn-send" onclick="markAsSent('${payment.id}')">Mark Sent</button>
+                            <button class="btn btn-secondary" onclick="deletePayment('${payment.id}')">Delete</button>
+                        </div>
+                    `;
+                } else if (payment.status === 'sent' || payment.status === 'in-pot') {
+                    actions = `
+                        <div class="payment-actions" style="justify-content: flex-end;">
+                            <button class="btn-bin" onclick="deletePayment('${payment.id}')" title="Delete">🗑️</button>
+                        </div>
+                    `;
+                }
             }
             
             const invoiceButton = payment.invoice ? 
@@ -1998,7 +2022,7 @@
                 return;
             }
             
-            container.innerHTML = recent.map(renderPaymentCard).join('');
+            container.innerHTML = recent.map(payment => renderPaymentCard(payment, true)).join('');
         }
 
         function renderPendingPayments() {
