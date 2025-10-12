@@ -1401,7 +1401,16 @@
                     const remoteData = doc.data();
                     if (remoteData && remoteData.payments) {
                         console.log('Using server data');
-                        window.payments = remoteData.payments;
+                        // Preserve local invoice data when syncing from server
+                        const updatedPayments = remoteData.payments.map(serverPayment => {
+                            const localPayment = window.payments.find(p => p.id === serverPayment.id);
+                            if (localPayment && localPayment.invoice && serverPayment.invoice?.hasLocal) {
+                                // Keep the local invoice data
+                                return { ...serverPayment, invoice: localPayment.invoice };
+                            }
+                            return serverPayment;
+                        });
+                        window.payments = updatedPayments;
                         saveLocalData();
                         updateUI();
                     }
@@ -1708,6 +1717,9 @@
                 paymentMethod = document.getElementById('paymentMethod').value;
             }
             
+            const now = new Date();
+            const dateString = now.toLocaleDateString('en-GB');
+            
             const payment = {
                 id: paymentId,
                 description: document.getElementById('paymentDesc').value,
@@ -1719,7 +1731,11 @@
                 invoice: hasInvoice ? { stored: 'local' } : null,
                 status: 'pending',
                 createdAt: new Date().toISOString(),
-                date: new Date().toISOString().split('T')[0]
+                date: new Date().toISOString().split('T')[0],
+                // Date tracking
+                dateAdded: dateString,
+                dateApproved: null,
+                dateSent: null
             };
 
             window.payments.unshift(payment);
@@ -1737,11 +1753,16 @@
         window.approvePayment = function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (payment) {
+                const dateString = new Date().toLocaleDateString('en-GB');
+                
                 if (payment.type === 'income' && payment.paymentMethod === 'cash') {
                     payment.status = 'in-pot';
                 } else {
                     payment.status = 'approved';
                 }
+                
+                payment.dateApproved = dateString;
+                
                 saveLocalData();
                 saveToFirebase();
                 updateUI();
@@ -1760,8 +1781,12 @@
                     }
                 }
                 
+                const dateString = new Date().toLocaleDateString('en-GB');
+                
                 payment.status = 'sent';
                 payment.sentAt = new Date().toISOString();
+                payment.dateSent = dateString;
+                
                 saveLocalData();
                 saveToFirebase();
                 updateUI();
@@ -1901,6 +1926,18 @@
             const methodIcon = payment.paymentMethod === 'cash' ? '💵' : 
                               payment.paymentMethod === 'cheque' ? '📝' : '🏦';
             
+            // Build date history
+            let dateHistory = '';
+            if (payment.dateAdded) {
+                dateHistory += `<div class="payment-meta-item">➕ Added: ${payment.dateAdded}</div>`;
+            }
+            if (payment.dateApproved) {
+                dateHistory += `<div class="payment-meta-item">✅ Approved: ${payment.dateApproved}</div>`;
+            }
+            if (payment.dateSent) {
+                dateHistory += `<div class="payment-meta-item">📤 Sent: ${payment.dateSent}</div>`;
+            }
+            
             let actions = '';
             if (payment.status === 'pending') {
                 actions = `
@@ -1943,12 +1980,12 @@
                         <div class="payment-meta-item">
                             ${methodIcon} ${payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
                         </div>
-                        <div class="payment-meta-item">
-                            📅 ${new Date(payment.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                        </div>
                         <span class="status-badge ${statusClass}">${statusText}</span>
                     </div>
                     ${payment.notes ? `<div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${payment.notes}</div>` : ''}
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.3;">
+                        ${dateHistory}
+                    </div>
                     ${invoiceButton}
                     ${actions}
                 </div>
