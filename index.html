@@ -235,6 +235,13 @@
             justify-content: space-between;
         }
 
+        .payment-card.status-pending,
+        .payment-card.status-approved,
+        .payment-card.status-sent,
+        .payment-card.status-in-pot {
+            background: var(--card-bg) !important;
+        }
+
         .payment-card::before {
             content: '';
             position: absolute;
