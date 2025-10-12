@@ -1772,15 +1772,6 @@
         window.markAsSent = function(id) {
             const payment = window.payments.find(p => p.id === id);
             if (payment) {
-                const cashPot = calculateCashPot();
-                
-                if (payment.paymentMethod === 'cash' && payment.type === 'expense') {
-                    if (cashPot < payment.amount) {
-                        alert(`Insufficient cash. Available: £${cashPot.toFixed(2)}, Required: £${payment.amount.toFixed(2)}`);
-                        return;
-                    }
-                }
-                
                 const dateString = new Date().toLocaleDateString('en-GB');
                 
                 payment.status = 'sent';
