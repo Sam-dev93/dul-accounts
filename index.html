@@ -242,7 +242,22 @@
             top: 0;
             bottom: 0;
             width: 3px;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        .payment-card.status-pending::before {
+            background: linear-gradient(180deg, var(--warning) 0%, #E07A00 100%);
+        }
+
+        .payment-card.status-approved::before {
+            background: linear-gradient(180deg, var(--danger) 0%, #DC3545 100%);
+        }
+
+        .payment-card.status-sent::before {
+            background: linear-gradient(180deg, var(--success) 0%, #28A745 100%);
+        }
+
+        .payment-card.status-in-pot::before {
+            background: linear-gradient(180deg, #007AFF 0%, #0056CC 100%);
         }
 
         .payment-card:active {
@@ -1979,8 +1994,11 @@
             const invoiceButton = payment.invoice ? 
                 `<button class="btn-view" onclick="viewInvoice('${payment.id}')">📄 View Invoice</button>` : '';
             
+            // Show status badge for home view, hide for other views to avoid redundancy
+            const statusBadge = isHomeView ? `<span class="status-badge ${statusClass}">${statusText}</span>` : '';
+            
             return `
-                <div class="payment-card">
+                <div class="payment-card ${statusClass}">
                     <div class="payment-header">
                         <div style="flex: 1; min-width: 0;">
                             <div class="payment-title">${payment.description}</div>
@@ -1995,7 +2013,8 @@
                         <div class="payment-meta-item">
                             ${methodIcon} ${payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
                         </div>
-                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        ${statusBadge}
+                        ${!isHomeView ? `<span class="status-badge ${statusClass}">${statusText}</span>` : ''}
                     </div>
                     ${payment.notes ? `<div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${payment.notes}</div>` : ''}
                     <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.3;">
